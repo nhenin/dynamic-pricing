@@ -1,0 +1,24 @@
+[submodule "cardano-ledger"]
+	path = cardano-ledger
+	url = https://github.com/nhenin/cardano-ledger-specs.git
+	branch = nicolas/dynamic-pricing
+[submodule "ouroboros-consensus"]
+	path = ouroboros-consensus
+	url = https://github.com/nhenin/ouroboros-consensus.git
+	branch = nicolas/dynamic-pricing
+[submodule "cardano-node"]
+	path = cardano-node
+	url = https://github.com/nhenin/cardano-node.git
+	branch = nicolas/dynamic-pricing
+[submodule "cardano-api"]
+	path = cardano-api
+	url = https://github.com/nhenin/cardano-api.git
+	branch = nicolas/dynamic-pricing
+[submodule "cardano-cli"]
+	path = cardano-cli
+	url = https://github.com/nhenin/cardano-cli-dp.git
+	branch = nicolas/dynamic-pricing
+[submodule "ouroboros-leios"]
+	path = ouroboros-leios
+	url = https://github.com/nhenin/ouroboros-leios-dp.git
+	branch = nicolas/dynamic-pricing
