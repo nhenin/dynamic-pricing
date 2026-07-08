@@ -1,9 +1,10 @@
-# Two-lane dynamic pricing — all changes, one place
+# Two-lane dynamic pricing on Cardano — prototype & live demo
 
-This super-repo **points to every repo that carries the two-lane dynamic-pricing
-work** (Cardano **Dijkstra** era, leios prototype). Each entry below is a git
-**submodule** pinned to the exact commit of my changes on my fork, so cloning
-this one repo gives you the whole cross-repo change set.
+A working prototype of **dynamic, two-lane transaction pricing** for Cardano
+(**Dijkstra** era, on top of the **Linear Leios** consensus prototype), with a
+live 3-node network and a dashboard to drive it. This super-repo pins every
+repo that carries the work, plus the demo dashboard and the design docs — one
+clone gives you the whole thing.
 
 ```bash
 git clone --recursive git@github.com:nhenin/dynamic-pricing.git
@@ -11,28 +12,156 @@ git clone --recursive git@github.com:nhenin/dynamic-pricing.git
 git submodule update --init --recursive
 ```
 
-## The repos & their changes
+## The idea in one minute
 
-Each **compare** link is the native GitHub review view (diff + line comments) of
-my `nicolas/dynamic-pricing` branch versus its upstream base.
+Every Linear Leios block round carries **two block bodies**:
 
-| Repo (submodule) | Fork | What changed | Compare |
-|---|---|---|---|
-| `cardano-ledger` | [nhenin/cardano-ledger-specs](https://github.com/nhenin/cardano-ledger-specs) | 5 UTXO/BBODY rules + EIP-1559 reprice controller | [diff](https://github.com/nhenin/cardano-ledger-specs/compare/leios-prototype...nicolas/dynamic-pricing) |
-| `ouroboros-consensus` | [nhenin/ouroboros-consensus](https://github.com/nhenin/ouroboros-consensus) | two-lane mempool, re-validation / eviction on price-rise | [diff](https://github.com/nhenin/ouroboros-consensus/compare/leios-prototype...nicolas/dynamic-pricing) |
-| `cardano-node` | [nhenin/cardano-node](https://github.com/nhenin/cardano-node) | lane feeder + forge lane/price/queue traces | [diff](https://github.com/nhenin/cardano-node/compare/leios-prototype...nicolas/dynamic-pricing) |
-| `cardano-api` | [nhenin/cardano-api](https://github.com/nhenin/cardano-api) | Dijkstra tx-body fields (inclusion / bid / refund) | [diff](https://github.com/nhenin/cardano-api/compare/leios-prototype...nicolas/dynamic-pricing) |
-| `cardano-cli` | [nhenin/cardano-cli-dp](https://github.com/nhenin/cardano-cli-dp) | Dijkstra tx-body CLI support | [diff](https://github.com/nhenin/cardano-cli-dp/compare/leios-prototype...nicolas/dynamic-pricing) |
-| `ouroboros-leios` | [nhenin/ouroboros-leios-dp](https://github.com/nhenin/ouroboros-leios-dp) | proto-devnet live-demo scripts + tailer | [diff](https://github.com/nhenin/ouroboros-leios-dp/compare/main...nicolas/dynamic-pricing) |
+- a small **ranking block** (RB, 90,112 bytes) applied to the ledger instantly;
+- a big **endorser block** (EB, 12,000,000 bytes — the real mainnet CIP-164
+  closure budget, ~133× the RB) applied only once a committee certifies it.
 
-_`ouroboros-network` had no substantive change and is omitted._
+Dynamic pricing turns those two transports into **two priced lanes**:
 
-## Status
+- **Urgent (fast lane → RB):** for time-sensitive traffic. Scarce space, so
+  its price does the moving.
+- **Optimistic (patient lane → EB):** for traffic that can wait a round or
+  two. Huge space, so at realistic traffic its price rests at the floor.
 
-- **Ledger — done.** 5 rules + reprice controller, builds `-Werror`, unit-tested.
-- **Mempool — eviction on price-rise works.** Re-validation was made full
-  (`reapplyShelleyTx`) so a risen quote re-checks U1 and drops the underpriced
-  backlog. Verified live: ~220 txs mass-evicted per quote spike, 1728 over one run.
-  Remaining gap: the `Mempool.RemoveTxs` trace isn't emitted (observability only).
-- **Demo — working.** Real 3-node proto-devnet with live real prices.
+A transaction **buys a lane**: it declares its inclusion strategy and bids a
+fee cap. Its full price is `base fee + rate × size`, where the per-byte
+**rate is republished by the ledger after every block**:
 
+```
+quote_next = max( floor, round( quote × (1 + swing) ) )
+swing      = clamp( (fullness − target) / 2 , ± max step )
+```
+
+- **fullness** = bytes the lane's block carried ÷ the lane's *own* byte budget
+- **target** = ½ (the controller aims for half-full blocks — the other half is
+  its price-signal headroom, not free space)
+- **floor** = 44 lovelace/byte · **max step** = ±25 % per block (damping D = 4)
+- the urgent rate is always kept ≥ **3×** the optimistic one (the *fast-lane
+  premium* — a mechanism parameter; the design simulations used 16×)
+
+The rest of the mechanism, in the same spirit:
+
+- **Bids are caps, prices move.** A waiting transaction whose bid falls below
+  the climbing quote is **evicted** (re-checked O(1) at every new block); one
+  already below quote is refused at the door.
+- **Min-fill rule:** an endorser block is only issued when it carries at least
+  **half a ranking block** (45,056 bytes) — below that the patient lane
+  *pools* for the next round. In the low-traffic case nothing is served later
+  than Praos-with-dynamic-pricing would serve it.
+- **First-come conflicts:** if two transactions of different lanes want the
+  same coin, the one admitted first keeps it — an admitted transaction is
+  never displaced.
+- **Per-lane pools:** each lane has its own admission ceilings (bytes *and* an
+  expected-diffusion-time budget). The urgent pool is deliberately shallow
+  (time-sensitive traffic must not queue for hours); the patient pool buffers
+  many endorser blocks' worth. When a pool is full, senders are held back —
+  visible on the dashboard.
+
+Full specifications: [docs/DYNAMIC_PRICING_LEDGER_RULES.md](docs/DYNAMIC_PRICING_LEDGER_RULES.md)
+(the five ledger rules + the controller) and
+[docs/MEMPOOL_2LANE_DESIGN.md](docs/MEMPOOL_2LANE_DESIGN.md) (the two-lane
+mempool). Transaction/block lifecycle diagram:
+[docs/DYNAMIC_PRICING_FLOW.md](docs/DYNAMIC_PRICING_FLOW.md).
+
+## What's in the box
+
+| Piece | What it carries |
+|---|---|
+| [`cardano-ledger`](https://github.com/nhenin/cardano-ledger-specs) (submodule) | The mechanism itself: pricing state, Dijkstra tx-body fields (inclusion / bid / refund account), the UTXO `BidBelowQuote` rule, usage accounting, the DIVUP block-close rule and the per-lane EIP-1559 controller |
+| [`ouroboros-consensus`](https://github.com/nhenin/ouroboros-consensus) (submodule) | The two-lane mempool: per-lane admission (bytes + diffusion-time), O(1) urgent admission, eviction-on-price-rise, first-come conflicts, forge selection with the min-fill rule, pool observability |
+| [`cardano-node`](https://github.com/nhenin/cardano-node) (submodule) | The lane feeder (a crowd of simulated senders choosing lanes against live prices), forge lane/price/queue traces, demo controls (per-lane queue flush) |
+| [`cardano-api`](https://github.com/nhenin/cardano-api) / [`cardano-cli`](https://github.com/nhenin/cardano-cli-dp) (submodules) | Dijkstra tx-body support for the new fields |
+| [`ouroboros-leios`](https://github.com/nhenin/ouroboros-leios-dp) (submodule) | The 3-node proto-devnet, the run supervisor, the trace tailer and the demo web server |
+| [`demo/index.html`](demo/index.html) | The dashboard (a single self-contained page) |
+| [`docs/`](docs/) | Design docs + the latest team-sync notes ([docs/TEAM_SYNC_2026-07-06.md](docs/TEAM_SYNC_2026-07-06.md)) |
+
+Each compare link shows the whole change set against its upstream base:
+[ledger](https://github.com/nhenin/cardano-ledger-specs/compare/leios-prototype...nicolas/dynamic-pricing) ·
+[consensus](https://github.com/nhenin/ouroboros-consensus/compare/leios-prototype...nicolas/dynamic-pricing) ·
+[node](https://github.com/nhenin/cardano-node/compare/leios-prototype...nicolas/dynamic-pricing) ·
+[api](https://github.com/nhenin/cardano-api/compare/leios-prototype...nicolas/dynamic-pricing) ·
+[cli](https://github.com/nhenin/cardano-cli-dp/compare/leios-prototype...nicolas/dynamic-pricing) ·
+[leios](https://github.com/nhenin/ouroboros-leios-dp/compare/main...nicolas/dynamic-pricing)
+
+## Running the demo
+
+Prerequisites: **nix** (with flakes), ~16 GB RAM, macOS or Linux.
+
+```bash
+# 1. Build the node and the lane feeder (one cabal project; first build is long)
+cd cardano-node
+nix develop --command cabal build exe:cardano-node exe:dijkstra-lane-feeder
+
+# 2. Point the run script at the binaries and the dashboard, then launch
+NODE_BIN_DIR=$(dirname $(nix develop --command cabal list-bin exe:cardano-node))
+FEEDER_BIN=$(nix develop --command cabal list-bin exe:dijkstra-lane-feeder)
+cd ../ouroboros-leios/demo/proto-devnet
+PATH="$NODE_BIN_DIR:$PATH" \
+LANE_FEEDER="$FEEDER_BIN" \
+DEMO_DIR="$(git rev-parse --show-toplevel)/../demo" \
+bash run-dijkstra-live-demo.sh
+```
+
+The script boots a **real 3-node Dijkstra devnet**, the crowd feeder, the
+trace tailer and two web servers, then streams every forged block into the
+dashboard:
+
+- **Presenter (drives everything): <http://localhost:8780>**
+- **Audience copy (read-only, share this one): <http://localhost:8781>** — to
+  put it on the internet for a call: `cloudflared tunnel --url
+  http://localhost:8781` (viewers see the live network; only the presenter's
+  port accepts commands).
+
+`Ctrl-C` tears everything down. A fresh boot takes ~3 minutes (chain starts at
+block 0).
+
+### Driving it
+
+Everything is on the page, in plain language, but the short tour:
+
+- **👥 The crowd** — one click picks a complete crowd (who sends, how fast,
+  which lanes): `Calm day`, `Rush hour`, `Urgent storm`, `Optimistic storm`
+  (fat 12 KB payloads), `Ghost town`… The 🧾 journal tracks what became of
+  every generation's transactions (sent → waiting → forged/dropped).
+- **⚡ The pressure** — trouble on demand, on top of the crowd: `Price
+  squeeze` (a burst bidding just above today's price — watch the climbing
+  quote drop its own transactions, with the ledger's per-transaction verdict
+  in the journal), `Coin clash` (first-come conflicts), `Certification miss`
+  (the committee goes silent and the patient lane freezes).
+- **Live cards** — each lane's published price (₳/KB and lovelace/byte), what
+  its mempool holds and how many blocks that fills, its pool against both
+  admission ceilings, and the wait a transaction sent *now* would face.
+- **🚿 Flush a queue / 🔄 Restart the network** — presenter-only resets: drop
+  one lane's waiting transactions (no restart), or reboot the whole network
+  to a fresh chain from the page.
+
+## Honest status
+
+- **Ledger** — the five rules + controller: done, `-Werror`, unit-tested.
+- **Mempool** — per-lane admission, O(1) urgent ingress (measured 446 tx/s),
+  exact eviction-on-price-rise (traced per transaction), min-fill rule: done,
+  all verified on the live network.
+- **Simulated piece** — the endorser-block *certificate*: the committee's
+  votes are cast and counted by the prototype itself (that is what the
+  Certification-miss scenario switches off). Everything else on screen —
+  prices, queues, blocks, evictions — is the real ledger and the real mempool.
+- **Demo calibrations** — premium 3× (design sims: 16×), diffusion-time budget
+  15 s split 1/9 urgent / 8/9 patient, patient pool ~132 MB. All are
+  parameters, not constants.
+
+## Open questions (tracked for the weekly)
+
+- **Min-fill aging:** a pure ≥ |RB|/2 threshold can starve a trickle (a few
+  pooled transactions below the bar never forge). The rule likely needs an
+  escape — issue anyway after K rounds held.
+- **Min-fill denominator:** half the *RB* budget (implemented, CIP framing) or
+  half the EB's own budget?
+- **Cross-lane validation order:** ours is first-come across lanes; the formal
+  spec sequences priority first. Different outcomes exactly on cross-lane
+  conflicts.
+- **Per-lane diffusion-time budgets:** the right calibration, and whether the
+  urgent window should be a protocol-visible bound.

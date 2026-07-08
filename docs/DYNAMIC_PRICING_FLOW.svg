@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1190" role="img" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <title>Dynamic Pricing — transaction and block lifecycle</title>
+  <desc>Vertical flow: a transaction enters the mempool, is judged by the UTXO rule (U1 bid-covers-quote check, U2 usage accounting, fee split), refunds are flushed by the LEDGER rule, and at end of block the BBODY rule runs sdChecks and reprices. Prices published at block N judge the transactions of block N+1.</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#56657a"/>
+    </marker>
+    <marker id="arrG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2f8f5f"/>
+    </marker>
+    <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+  </defs>
+  <style>
+    .band  { fill:#f5f8fc; stroke:#e6ecf4; }
+    .acc   { fill:#3b6fb0; }
+    .bandlbl { fill:#3b6fb0; font-size:13px; font-weight:700; letter-spacing:.06em; }
+    .box   { fill:#e9f0f8; stroke:#4f74a8; stroke-width:1.5; }
+    .dec   { fill:#ffffff; stroke:#4f74a8; stroke-width:2.2; }
+    .fail  { fill:#fde4e4; stroke:#c0392b; stroke-width:1.6; }
+    .open  { fill:#fff4d6; stroke:#d6a417; stroke-width:1.6; }
+    .t     { fill:#20364f; font-size:15px; font-weight:700; }
+    .d     { fill:#42546b; font-size:12.5px; }
+    .ft    { fill:#8a2222; font-size:14px; font-weight:700; }
+    .fd    { fill:#9a3b3b; font-size:12px; }
+    .ot    { fill:#7a5a00; font-size:14px; font-weight:700; }
+    .od    { fill:#876514; font-size:11.5px; }
+    .edge  { stroke:#56657a; stroke-width:1.8; fill:none; }
+    .loop  { stroke:#2f8f5f; stroke-width:2.4; fill:none; }
+    .elab  { fill:#5a6b80; font-size:12px; }
+    .yes   { fill:#2f7d4f; font-size:12px; font-weight:700; }
+    .no    { fill:#c0392b; font-size:12px; font-weight:700; }
+    .title { fill:#1b2a3d; font-size:22px; font-weight:800; }
+    .sub   { fill:#5a6b80; font-size:13px; }
+  </style>
+
+  <rect x="0" y="0" width="1080" height="1190" fill="#fcfcfe"/>
+  <text x="540" y="42" text-anchor="middle" class="title">Dynamic Pricing — transaction &amp; block lifecycle</text>
+  <text x="540" y="64" text-anchor="middle" class="sub">Dijkstra · Praos-only (every block is an RB) · companion to DYNAMIC_PRICING_LEDGER_RULES.md</text>
+
+  <!-- ===== Phase bands ===== -->
+  <g>
+    <rect class="band" x="24" y="86"  width="856" height="198" rx="12"/><rect class="acc" x="24" y="86"  width="6" height="198"/>
+    <text class="bandlbl" x="44" y="108">SUBMISSION</text>
+
+    <rect class="band" x="24" y="296" width="856" height="346" rx="12"/><rect class="acc" x="24" y="296" width="6" height="346"/>
+    <text class="bandlbl" x="44" y="318">UTXO RULE — per tx · s2–s3</text>
+
+    <rect class="band" x="24" y="654" width="856" height="120" rx="12"/><rect class="acc" x="24" y="654" width="6" height="120"/>
+    <text class="bandlbl" x="44" y="676">LEDGER RULE — per tx · s4</text>
+
+    <rect class="band" x="24" y="786" width="856" height="312" rx="12"/><rect class="acc" x="24" y="786" width="6" height="312"/>
+    <text class="bandlbl" x="44" y="808">BBODY — end of block · s5</text>
+  </g>
+
+  <!-- ===== edges (drawn before boxes) ===== -->
+  <path class="edge" d="M400,200 V222" marker-end="url(#arr)"/>
+  <path class="edge" d="M400,270 V312" marker-end="url(#arr)"/>
+  <path class="edge" d="M400,380 V412" marker-end="url(#arr)"/><text class="yes" x="408" y="400">yes</text>
+  <path class="edge" d="M400,464 V500" marker-end="url(#arr)"/>
+  <path class="edge" d="M570,346 H620" marker-end="url(#arrR)"/><text class="no" x="582" y="338">no</text>
+  <path class="edge" d="M400,620 V668" marker-end="url(#arr)"/>
+  <path class="edge" d="M400,756 V804" marker-end="url(#arr)"/><text class="elab" x="410" y="784">end of block</text>
+  <path class="edge" d="M400,872 V904" marker-end="url(#arr)"/><text class="yes" x="408" y="892">yes</text>
+  <path class="edge" d="M570,838 H620" marker-end="url(#arrR)"/><text class="no" x="582" y="830">no</text>
+  <path class="edge" d="M400,976 V1006" stroke-dasharray="5 4" marker-end="url(#arr)"/><text class="elab" x="408" y="996">currently</text>
+
+  <!-- per-tx loop -->
+  <path class="edge" d="M570,712 H908 V300 H470 V312" marker-end="url(#arr)"/>
+  <text class="elab" x="900" y="500" text-anchor="end" transform="rotate(-90 900 500)">more txs in block →</text>
+
+  <!-- temporal feedback loop (green) -->
+  <path class="loop" d="M545,940 H988 V246 H540" marker-end="url(#arrG)"/>
+  <text x="980" y="600" text-anchor="middle" transform="rotate(-90 980 600)" fill="#2f8f5f" font-size="12.5" font-weight="700">publishedPrices(block N) → judge txs of block N+1</text>
+
+  <!-- ===== boxes ===== -->
+  <!-- A -->
+  <rect class="box" x="220" y="104" width="360" height="96" rx="10"/>
+  <text class="t" x="400" y="130" text-anchor="middle">Transaction</text>
+  <text class="d" x="400" y="151" text-anchor="middle">dtbInclusion: Urgent | Optimistic</text>
+  <text class="d" x="400" y="169" text-anchor="middle">dtbBidFee — price cap</text>
+  <text class="d" x="400" y="187" text-anchor="middle">dtbFeeRefundAccount?</text>
+
+  <rect class="box" x="260" y="222" width="280" height="48" rx="10"/>
+  <text class="t" x="400" y="243" text-anchor="middle">MEMPOOL</text>
+  <text class="d" x="400" y="261" text-anchor="middle">judged vs current published prices</text>
+
+  <!-- B -->
+  <rect class="dec" x="230" y="312" width="340" height="68" rx="10"/>
+  <text class="t" x="400" y="338" text-anchor="middle">U1 — does the bid cover the quote?</text>
+  <text class="d" x="400" y="360" text-anchor="middle">quoteFor(pp, tx, priceOf i) ≤ dtbBidFee</text>
+
+  <rect class="fail" x="620" y="318" width="250" height="56" rx="10"/>
+  <text class="ft" x="745" y="341" text-anchor="middle">✗ BidBelowQuote</text>
+  <text class="fd" x="745" y="360" text-anchor="middle">{ expected, supplied }</text>
+
+  <rect class="box" x="260" y="412" width="280" height="52" rx="10"/>
+  <text class="t" x="400" y="434" text-anchor="middle">U2 — record usage</text>
+  <text class="d" x="400" y="453" text-anchor="middle">recordTx i size fee exUnits → blockUsage</text>
+
+  <rect class="box" x="190" y="500" width="420" height="120" rx="10"/>
+  <text class="t" x="400" y="524" text-anchor="middle">Fee split</text>
+  <text class="d" x="400" y="545" text-anchor="middle">when feeRefundAccount = Just acct</text>
+  <text class="d" x="400" y="567" text-anchor="middle">base → fee pot   (SPOs keep today's revenue)</text>
+  <text class="d" x="400" y="585" text-anchor="middle">premium = quote − base → donation / treasury</text>
+  <text class="d" x="400" y="603" text-anchor="middle">refund = dtbBidFee − quote → pendingRefunds</text>
+
+  <!-- C -->
+  <rect class="box" x="230" y="668" width="340" height="88" rx="10"/>
+  <text class="t" x="400" y="694" text-anchor="middle">flushPendingRefunds</text>
+  <text class="d" x="400" y="715" text-anchor="middle">credit registered accounts → rewards</text>
+  <text class="d" x="400" y="734" text-anchor="middle">pendingRefunds := ∅</text>
+
+  <!-- D -->
+  <rect class="dec" x="230" y="804" width="340" height="68" rx="10"/>
+  <text class="t" x="400" y="830" text-anchor="middle">B1 — sdChecks</text>
+  <text class="d" x="400" y="852" text-anchor="middle">Optimistic bytes + ExUnits ≤ RB limits?</text>
+
+  <rect class="fail" x="620" y="810" width="258" height="56" rx="10"/>
+  <text class="ft" x="749" y="833" text-anchor="middle">✗ OptimisticOverflowsBlock</text>
+  <text class="fd" x="749" y="852" text-anchor="middle">{ , ExUnits }</text>
+
+  <rect class="box" x="255" y="904" width="290" height="72" rx="10"/>
+  <text class="t" x="400" y="930" text-anchor="middle">B2 — endOfBlock</text>
+  <text class="d" x="400" y="951" text-anchor="middle">reprice published prices</text>
+  <text class="d" x="400" y="969" text-anchor="middle">reset blockUsage := ∅</text>
+
+  <rect class="open" x="255" y="1006" width="290" height="60" rx="10"/>
+  <text class="ot" x="400" y="1030" text-anchor="middle">reprice = EIP-1559 controller (Will) ✓</text>
+  <text class="od" x="400" y="1050" text-anchor="middle">target ½, D=4 · optimistic signal still open (Q4)</text>
+
+  <!-- ===== legend ===== -->
+  <g transform="translate(0,1110)">
+    <rect class="band" x="24" y="0" width="856" height="60" rx="12"/>
+    <rect class="box"  x="48"  y="20" width="22" height="16" rx="4"/><text class="d" x="78"  y="33">process / state update</text>
+    <rect class="dec"  x="250" y="20" width="22" height="16" rx="4"/><text class="d" x="280" y="33">premise / check</text>
+    <rect class="fail" x="430" y="20" width="22" height="16" rx="4"/><text class="d" x="460" y="33">predicate failure</text>
+    <rect class="open" x="600" y="20" width="22" height="16" rx="4"/><text class="d" x="630" y="33">open question</text>
+    <line x1="760" y1="28" x2="800" y2="28" class="loop"/><text class="d" x="808" y="33">temporal loop</text>
+  </g>
+</svg>
