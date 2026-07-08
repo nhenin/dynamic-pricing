@@ -36,7 +36,3 @@ _`ouroboros-network` had no substantive change and is omitted._
   Remaining gap: the `Mempool.RemoveTxs` trace isn't emitted (observability only).
 - **Demo — working.** Real 3-node proto-devnet with live real prices.
 
-## See also
-
-- Consolidated review (diffs rendered as one browsable page + design docs):
-  [nhenin/dynamic-pricing-review](https://github.com/nhenin/dynamic-pricing-review) (private).
