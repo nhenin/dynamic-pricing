@@ -280,6 +280,20 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 .etabar i{display:block;height:100%;border-radius:3px;background:var(--live);transition:width .25s linear}
 .etabar i.due{animation:duePulse 1s ease-in-out infinite}
 @keyframes duePulse{50%{opacity:.35}}
+/* The repricing rule, told as a dial: block fullness in -> price nudge out. */
+.rr-scale{position:relative;margin:14px 8px 4px}
+.rr-scale .bar{height:10px;border-radius:5px;
+  background:linear-gradient(90deg, var(--good), color-mix(in srgb, var(--good) 25%, transparent) 45%, transparent 50%, color-mix(in srgb, var(--live) 25%, transparent) 55%, var(--live))}
+.rr-scale .mid{position:absolute;left:50%;top:-4px;bottom:8px;width:2px;background:var(--text);opacity:.45}
+.rr-ticks{display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--muted)}
+.rr-ticks b{display:block;font-size:13px;color:var(--text);font-variant-numeric:tabular-nums}
+.rr-live{position:absolute;top:-7px;width:14px;height:14px;border-radius:50%;background:var(--urgent);
+  border:2.5px solid var(--panel-bg);box-shadow:0 1px 4px rgba(0,0,0,.3);transform:translateX(-50%);transition:left .6s ease}
+.rr-live-note{font-size:11.5px;color:var(--urgent);font-weight:650;margin-top:6px;text-align:center}
+.rr-lanes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.rr-lane{border:1.5px solid var(--border);border-left:4px solid var(--lane);border-radius:10px;padding:10px 13px;font-size:12.5px;line-height:1.55}
+.rr-lane .t{font-weight:700;color:var(--lane);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+@media (max-width:720px){.rr-lanes{grid-template-columns:1fr}}
 .sechead .secnum{font-size:30px;line-height:1;color:var(--sec,var(--accent,#7c3aed));font-weight:700}
 .sechead h2{margin:0 0 4px;font-size:20px}
 .sechead p{margin:0;color:var(--muted);font-size:14px;max-width:70ch}
@@ -549,50 +563,74 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 
   <div class="panel">
     <h2>The repricing rule <span style="font-weight:400;color:var(--muted)">— what the ledger computes after every block</span></h2>
-    <p class="hint">The exact rule running in the ledger, in plain terms. Every block it checks how full the
-      <em>previous</em> block was (its <span data-term="utilisation">utilisation</span>). More than
-      <span data-term="target">half-full</span> → it raises the price to ease the crowding; less than half-full → it lowers
-      the price to invite more in. The price moves by at most <span data-term="D">±25% per block</span> and never drops
-      below the 44 lovelace/byte floor.</p>
-    <div class="eq-formula">
-      <math display="block" xmlns="http://www.w3.org/1998/Math/MathML">
-        <msub><mtext>quote</mtext><mtext>next</mtext></msub>
-        <mo>=</mo>
-        <mi>max</mi><mo form="prefix">(</mo>
-          <mtext>floor</mtext><mo>,</mo>
-          <mi>round</mi><mo form="prefix">(</mo>
-            <mtext>quote</mtext><mo>·</mo><mo form="prefix">(</mo>
-              <mn>1</mn><mo>+</mo><mtext>swing</mtext>
-            <mo form="postfix">)</mo>
-          <mo form="postfix">)</mo>
-        <mo form="postfix">)</mo>
-      </math>
-      <math display="block" xmlns="http://www.w3.org/1998/Math/MathML" style="margin-top:4px">
-        <mtext>swing</mtext>
-        <mo>=</mo>
-        <mi>clamp</mi><mo form="prefix">(</mo>
-          <mfrac>
-            <mrow><mtext>fullness</mtext><mo>−</mo><mtext>target</mtext></mrow>
-            <mn>2</mn>
-          </mfrac>
-          <mo>,</mo><mo>±</mo><mtext>max&nbsp;step</mtext>
-        <mo form="postfix">)</mo>
-      </math>
-      <div class="legend-line" style="margin-top:10px">
-        <b>Both lanes run this same rule</b>, independently — each measuring fullness against its <em>own</em> byte
-        budget: the urgent lane against the ranking block's 90,112 bytes, the optimistic lane against the endorser
-        block's full 12,000,000 bytes. That asymmetry is the mechanism's real shape: a 12&nbsp;MB block is rarely
-        half-full at realistic traffic, so the optimistic quote spends most of its life at the floor while the urgent
-        quote does the moving. After both update, the urgent quote is raised to at least
-        <b>3×</b> the optimistic one — the <em>fast-lane premium</em>, a <strong>parameter of the mechanism</strong>
-        (nothing hard-wires the 3: this demo runs it at 3× so the gap stays readable on screen; the design simulations
-        used 16×). Whatever its value, it guarantees the fast lane never quietly becomes the cheap one.
+    <p class="hint" style="font-size:13.5px">After every block, the ledger looks at <strong>how full that lane's block
+      ran</strong> and republishes the price. That's the whole rule:</p>
+    <div style="display:flex;flex-direction:column;gap:6px;margin:6px 0 2px;font-size:13.5px;line-height:1.6">
+      <div>📈 Ran <strong>more than half-full</strong> → the price <strong style="color:var(--live)">rises</strong> —
+        the fuller it ran, the bigger the step, up to <strong>+25%</strong>.</div>
+      <div>📉 Ran <strong>less than half-full</strong> → the price <strong style="color:var(--good)">falls</strong> —
+        the emptier, the bigger the cut, down to <strong>−25%</strong>.</div>
+      <div>🧱 It never drops below the <strong>floor</strong>: 44 lovelace/byte.</div>
+    </div>
+    <div class="rr-scale">
+      <div class="bar"></div>
+      <div class="mid"></div>
+      <div class="rr-live" id="rr-live-dot" style="left:50%;display:none"></div>
+      <div class="rr-ticks">
+        <span><b>−25%</b>block ran empty</span>
+        <span><b>−12.5%</b>¼ full</span>
+        <span style="text-align:center"><b>0</b>half-full — on target</span>
+        <span><b>+12.5%</b>¾ full</span>
+        <span style="text-align:right"><b>+25%</b>ran full</span>
       </div>
-      <div class="legend-line">
-        <b>quote</b> = the lane's published price (lovelace/byte) · <b>fullness</b> = bytes the lane's block carried ÷ the lane's <em>own</em> byte budget (90,112 for the RB, 12,000,000 for the EB) ·
-        <b>target</b> = ½ (the controller aims for half-full blocks) · <b>floor</b> = 44 lovelace/byte (never below) · <b>max&nbsp;step</b> = 25% per block (the damping <b>D&nbsp;=&nbsp;4</b>)
+      <div class="rr-live-note" id="rr-live-note" style="display:none"></div>
+    </div>
+    <div class="rr-lanes">
+      <div class="rr-lane" style="--lane:var(--urgent)">
+        <div class="t">Urgent · fast lane</div>
+        Fullness is measured against <strong>its own block</strong>: the ranking block's <strong>90,112 bytes</strong>.
+        A small block fills easily, so this is the price that <strong>does the moving</strong> — the drama on the
+        History chart is almost always this line.
+      </div>
+      <div class="rr-lane" style="--lane:var(--optimistic)">
+        <div class="t">Optimistic · patient lane</div>
+        Same rule, but against the endorser block's <strong>12,000,000 bytes</strong> (~133× bigger). At realistic
+        traffic it is rarely half-full, so this price spends most of its life <strong>resting at the floor</strong> —
+        that is the mechanism working, not a bug.
       </div>
     </div>
+    <p class="hint" style="margin-top:12px">One last guard, after both lanes update: the urgent price is kept at least
+      <strong>3×</strong> the optimistic one — the <em>fast-lane premium</em>, a parameter of the mechanism (this demo
+      runs 3× so the gap stays readable; the design simulations used 16×). The fast lane never quietly becomes the
+      cheap one.</p>
+    <details style="margin-top:10px">
+      <summary class="hint" style="cursor:pointer;margin:0">The exact formula, for the mathematically inclined</summary>
+      <div class="eq-formula" style="margin-top:8px">
+        <math display="block" xmlns="http://www.w3.org/1998/Math/MathML">
+          <msub><mtext>quote</mtext><mtext>next</mtext></msub>
+          <mo>=</mo>
+          <mi>max</mi><mo form="prefix">(</mo>
+            <mtext>floor</mtext><mo>,</mo>
+            <mi>round</mi><mo form="prefix">(</mo>
+              <mtext>quote</mtext><mo>·</mo><mo form="prefix">(</mo>
+                <mn>1</mn><mo>+</mo><mtext>step</mtext>
+              <mo form="postfix">)</mo>
+            <mo form="postfix">)</mo>
+          <mo form="postfix">)</mo>
+        </math>
+        <math display="block" xmlns="http://www.w3.org/1998/Math/MathML" style="margin-top:4px">
+          <mtext>step</mtext>
+          <mo>=</mo>
+          <mfrac><mrow><mtext>fullness</mtext><mo>−</mo><mn>&#189;</mn></mrow><mn>2</mn></mfrac>
+          <mtext>&nbsp;&nbsp;cut off at ±25%</mtext>
+        </math>
+        <div class="legend-line" style="margin-top:8px">
+          <b>fullness</b> = bytes the lane's block carried ÷ the lane's own byte budget · the ½ is the half-full
+          target · the ÷2 and the ±25% cut-off both come from the damping parameter <b>D&nbsp;=&nbsp;4</b> ·
+          <b>floor</b> = 44 lovelace/byte.
+        </div>
+      </div>
+    </details>
   </div>
 
   </details>
@@ -1619,6 +1657,22 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       + `<div class="etabar"><i class="${eta <= 3 ? "due" : ""}" style="width:${eta <= 3 ? 100 : pct}%"></i></div>`;
   }
 
+  // The live dot on the repricing dial: where the fast lane's latest block
+  // fullness lands, i.e. the step its price is about to take.
+  function repriceScale(){
+    const dot = document.getElementById("rr-live-dot");
+    const note = document.getElementById("rr-live-note");
+    if (!dot || !note || !all.length) return;
+    const b = all[all.length - 1];
+    if (b.rbBytes == null){ dot.style.display = "none"; note.style.display = "none"; return; }
+    const fullness = Math.max(0, Math.min(1, b.rbBytes / RB_BYTE_BUDGET));
+    dot.style.display = "";
+    dot.style.left = (fullness * 100) + "%";
+    const step = Math.max(-25, Math.min(25, (fullness - 0.5) / 2 * 100));
+    note.style.display = "";
+    note.textContent = `▲ the fast lane right now: block ${Math.round(fullness*100)}% full → next step ${step > 0 ? "+" : ""}${step.toFixed(1)}%`;
+  }
+
   function readout(){
     if (!all.length){ const g=document.getElementById("nowgrid"); if (g) g.innerHTML = ""; return; }
     const b = all[all.length-1];
@@ -1764,7 +1818,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 
   function render(){
     priceChart();
-    compChart(); readout(); actorChart(); loopDiagram(); txLifecycle(); laneHealth(); evRender();
+    compChart(); readout(); repriceScale(); actorChart(); loopDiagram(); txLifecycle(); laneHealth(); evRender();
     renderLedgerLog();
   }
 
