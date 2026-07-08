@@ -995,73 +995,138 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     ].join("");
   }
 
+  // History as TWO lane panels — each lane its own y-scale (the optimistic
+  // wiggles are invisible on a shared log axis), its own queue overlay, and a
+  // fullness RIBBON underneath: the repricing dial unrolled over time (red =
+  // the block ran past the half-full target, its price steps up; green =
+  // under, it steps down).
+  function hexToRgba(hex, a){
+    const h = hex.trim().replace("#", "");
+    const v = h.length === 3 ? h.split("").map(c => c + c).join("") : h;
+    const r = parseInt(v.slice(0,2),16), g = parseInt(v.slice(2,4),16), b = parseInt(v.slice(4,6),16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  function ribbonFill(step){
+    if (step == null) return "transparent";
+    const alpha = Math.min(1, 0.12 + Math.min(1, Math.abs(step) / 0.25) * 0.88);
+    if (Math.abs(step) < 0.004) return hexToRgba(tok("--muted"), 0.10);
+    return hexToRgba(tok(step > 0 ? "--live" : "--good"), alpha);
+  }
+  // The step the ledger ACTUALLY took at each block — derived from the price
+  // itself, so the ribbon can never contradict the curve above it. (For the
+  // patient lane this exposes certification pacing: applied-EB rounds step
+  // up, held rounds count zero usage and step down.)
+  function realizedSteps(data, field){
+    const out = new Map();
+    for (let k = 1; k < data.length; k++){
+      const a = data[k-1][field], b = data[k][field];
+      out.set(data[k].i, a > 0 ? b/a - 1 : null);
+    }
+    return out;
+  }
   function priceChart(){
     const t = { axis: tok("--axis"), grid: tok("--grid"), text: tok("--text") };
     const data = view();
-    if (!data.length){ document.getElementById("panel-price").innerHTML = ""; return; }
-    const yMin = Math.max(20, Math.min(...data.map(b=>b.optimistic)) * 0.7);
-    const yMax = Math.max(...data.map(b=>b.urgent)) * 1.35;
+    const host = document.getElementById("panel-price");
+    if (!data.length){ host.innerHTML = ""; return; }
     const now = data[data.length-1];
-    // Queue overlay: its own scale (0..max queue), mapped pixel-linearly into the
-    // price plot's y-range so both stories share one x-axis without a fake unit.
-    const qMax = Math.max(1, ...data.map(b => Math.max(b.qu||0, b.qo||0)));
-    const yq = q => logScale
-      ? Math.exp(Math.log(yMin) + (q/qMax)*(Math.log(yMax)-Math.log(yMin)))
-      : yMin + (q/qMax)*(yMax-yMin);
-    const qdata = data.map(b => ({i:b.i, quD:yq(b.qu||0), qoD:yq(b.qo||0)}));
-    const qnow = qdata[qdata.length-1];
-    // The queue curves get the same treatment as the price lines: a dot and a
-    // number at their LAST point. Between forges the dot slides vertically to
-    // the live mempool value (a thin vertical connector shows the drift from
-    // the at-forge reading); the next block replaces it with the real point.
-    const lqLive = liveQueues() || {qu: data[data.length-1].qu||0, qo: data[data.length-1].qo||0, est: false};
-    const quLiveY = yq(Math.min(lqLive.qu, qMax));
-    const qoLiveY = yq(Math.min(lqLive.qo, qMax));
-    const quLabel = `${lqLive.est ? "≈ " : ""}${lqLive.qu.toLocaleString()}`;
-    const qoLabel = `${lqLive.est ? "≈ " : ""}${lqLive.qo.toLocaleString()}`;
-    // A readable right-hand axis for the queue overlay: round ticks on the
-    // queue's own 0..max scale, drawn in the queue colour at the right edge.
-    const qStep = qMax<=400?100 : qMax<=1200?250 : qMax<=2500?500 : qMax<=5000?1000 : qMax<=12000?2500 : 5000;
-    const qTicks = [];
-    for (let v = 0; v <= qMax; v += qStep) qTicks.push({i:data[data.length-1].i, y:yq(v), v});
-    const xDom = [data[0].i - 0.5, Math.max(data[data.length-1].i, data[0].i + 39) + 0.5];
-    const marks = [
-      Plot.gridY({stroke:t.grid}),
-      Plot.areaY(qdata, {x:"i", y1:yq(0), y2:"quD", fill:tok("--urgent"), fillOpacity:0.08, curve:"basis"}),
-      Plot.line(qdata, {x:"i", y:"quD", stroke:tok("--urgent"), strokeOpacity:0.35, strokeWidth:1.3, strokeDasharray:"4,3", curve:"basis"}),
-      Plot.line(qdata, {x:"i", y:"qoD", stroke:tok("--optimistic"), strokeOpacity:0.35, strokeWidth:1.3, strokeDasharray:"4,3", curve:"basis"}),
-      Plot.link([{x1:qnow.i, y1:qnow.quD, x2:qnow.i, y2:quLiveY}],
-        {x1:"x1", y1:"y1", x2:"x2", y2:"y2", stroke:tok("--urgent"), strokeOpacity:0.45, strokeWidth:1, strokeDasharray:"2,2"}),
-      Plot.link([{x1:qnow.i, y1:qnow.qoD, x2:qnow.i, y2:qoLiveY}],
-        {x1:"x1", y1:"y1", x2:"x2", y2:"y2", stroke:tok("--optimistic"), strokeOpacity:0.45, strokeWidth:1, strokeDasharray:"2,2"}),
-      Plot.dot([{i:qnow.i, y:quLiveY}], {x:"i", y:"y", fill:tok("--urgent"), r:3, stroke:tok("--panel-bg"), strokeWidth:1.2, fillOpacity:0.85}),
-      Plot.dot([{i:qnow.i, y:qoLiveY}], {x:"i", y:"y", fill:tok("--optimistic"), r:3, stroke:tok("--panel-bg"), strokeWidth:1.2, fillOpacity:0.85}),
-      Plot.text(qTicks, {x:"i", y:"y", text:d=>d.v.toLocaleString(), dx:66, textAnchor:"start", fill:tok("--urgent"), fillOpacity:0.5, fontSize:9.5}),
-      Plot.text([qTicks[qTicks.length-1]], {x:"i", y: () => yMax, text:["waiting ↓"], dx:66, dy:-4, textAnchor:"start", fill:tok("--urgent"), fillOpacity:0.6, fontSize:9.5}),
-      Plot.text([{i: qnow.i, y: quLiveY}], {x:"i", y:"y", text:[quLabel],
-        dx:8, textAnchor:"start", fill:tok("--urgent"), fillOpacity:0.75, fontSize:11, fontWeight:600}),
-      Plot.text([{i: qnow.i, y: qoLiveY}], {x:"i", y:"y", text:[qoLabel],
-        dx:8, textAnchor:"start", fill:tok("--optimistic"), fillOpacity:0.8, fontSize:11, fontWeight:600}),
-      Plot.line(data, {x:"i", y:"urgent", stroke:tok("--urgent"), strokeWidth:2.2, curve:"monotone-x"}),
-      Plot.line(data, {x:"i", y:"optimistic", stroke:tok("--optimistic"), strokeWidth:2.2, curve:"monotone-x"}),
-      Plot.dot([now], {x:"i", y:"urgent", fill:tok("--urgent"), r:3.5, stroke:tok("--panel-bg"), strokeWidth:1.5}),
-      Plot.dot([now], {x:"i", y:"optimistic", fill:tok("--optimistic"), r:3.5, stroke:tok("--panel-bg"), strokeWidth:1.5}),
-      Plot.text([now], {x:"i", y:"urgent", text:[adaKb(now.urgent)], dx:8, textAnchor:"start", fill:tok("--urgent"), fontSize:12, fontWeight:600}),
-      Plot.text([now], {x:"i", y:"optimistic", text:[adaKb(now.optimistic)], dx:8, textAnchor:"start", fill:tok("--optimistic"), fontSize:12, fontWeight:600}),
-      Plot.ruleX(data, Plot.pointerX({x:"i", stroke:t.grid, strokeWidth:1})),
-    ];
-    const fig = Plot.plot({
-      width: cw("panel-price",760), height: 300, marginLeft: 64, marginRight: 104, marginBottom: 34,
-      style: { background:"transparent", color:t.text, fontSize:"11px" },
-      x: { label:"forged block →", labelAnchor:"center", grid:false, tickFormat:"d", ticks: sparseTicks(data), domain:xDom },
-      y: { type: logScale ? "log" : "linear", domain:[yMin,yMax], label:"quote — ₳ per 1 KB transaction",
-           ticks: [0.02,0.05,0.1,0.2,0.5,1,2,5,10,20,50].map(a=>a*1e6/REF_TX_BYTES).filter(v=>v>=yMin&&v<=yMax),
-           tickFormat:(d)=>adaKb(d) },
-      marks,
+    const xDom = [data[0].i - 0.5, Math.max(now.i, data[0].i + 39) + 0.5];
+    const W = cw("panel-price", 760);
+    const lqLive = liveQueues() || {qu: now.qu||0, qo: now.qo||0, est: false};
+
+    const lanePanel = (opts) => {
+      const {color, price, queue, height, yType, yDomain, yTicks, liveQ} = opts;
+      const steps = realizedSteps(data, price);
+      const qMax = Math.max(1, ...data.map(b => b[queue]||0));
+      const [y0, y1] = yDomain;
+      const yq = q => yType === "log"
+        ? Math.exp(Math.log(y0) + (q/qMax)*(Math.log(y1)-Math.log(y0)))
+        : y0 + (q/qMax)*(y1-y0);
+      const qdata = data.map(b => ({i:b.i, q:yq(b[queue]||0)}));
+      const qnow = qdata[qdata.length-1];
+      const qLiveY = yq(Math.min(liveQ, qMax));
+      const qLabel = `${lqLive.est ? "≈ " : ""}${liveQ.toLocaleString()}`;
+      const marks = [
+        Plot.gridY({stroke:t.grid}),
+        Plot.areaY(qdata, {x:"i", y1:yq(0), y2:"q", fill:color, fillOpacity:0.08, curve:"basis"}),
+        Plot.line(qdata, {x:"i", y:"q", stroke:color, strokeOpacity:0.35, strokeWidth:1.3, strokeDasharray:"4,3", curve:"basis"}),
+        Plot.link([{x1:qnow.i, y1:qnow.q, x2:qnow.i, y2:qLiveY}],
+          {x1:"x1", y1:"y1", x2:"x2", y2:"y2", stroke:color, strokeOpacity:0.45, strokeWidth:1, strokeDasharray:"2,2"}),
+        Plot.dot([{i:qnow.i, y:qLiveY}], {x:"i", y:"y", fill:color, r:3, stroke:tok("--panel-bg"), strokeWidth:1.2, fillOpacity:0.85}),
+        Plot.text([{i:qnow.i, y:qLiveY}], {x:"i", y:"y", text:[qLabel + " waiting"],
+          dx:8, textAnchor:"start", fill:color, fillOpacity:0.75, fontSize:10.5, fontWeight:600}),
+        Plot.line(data, {x:"i", y:price, stroke:color, strokeWidth:2.2, curve:"monotone-x"}),
+        Plot.dot([now], {x:"i", y:price, fill:color, r:3.5, stroke:tok("--panel-bg"), strokeWidth:1.5}),
+        Plot.text([now], {x:"i", y:price, text:[adaKb(now[price])], dx:8, textAnchor:"start", fill:color, fontSize:12, fontWeight:600}),
+        Plot.ruleX(data, Plot.pointerX({x:"i", stroke:t.grid, strokeWidth:1})),
+      ];
+      // The floor, visible where the domain reaches it (the patient lane's home).
+      if (y0 <= CTRL.floor)
+        marks.unshift(
+          Plot.ruleY([CTRL.floor], {stroke:color, strokeOpacity:0.45, strokeDasharray:"2,3"}),
+          Plot.text([{y:CTRL.floor}], {x: () => xDom[0], y:"y", text:["floor"], dx:4, dy:-6,
+            textAnchor:"start", fill:color, fillOpacity:0.6, fontSize:9.5}));
+      const fig = Plot.plot({
+        width: W, height, marginLeft: 64, marginRight: 104, marginBottom: 4, marginTop: 10,
+        style: { background:"transparent", color:t.text, fontSize:"11px" },
+        x: { axis: null, domain: xDom },
+        y: { type: yType, domain: yDomain, label: null,
+             ticks: yTicks, tickFormat: (d)=>adaKb(d) },
+        marks,
+      });
+      separateRightLabels(fig, [qLabel + " waiting"]);
+      attachTip(fig, priceTipHTML);
+      // The ribbon: one cell per block, fullness vs the half-full target.
+      const rib = Plot.plot({
+        width: W, height: opts.withAxis ? 46 : 20, marginLeft: 64, marginRight: 104,
+        marginBottom: opts.withAxis ? 30 : 2, marginTop: 2,
+        style: { background:"transparent", color:t.text, fontSize:"11px" },
+        x: opts.withAxis
+          ? { label:"forged block →", labelAnchor:"center", grid:false, tickFormat:"d", ticks: sparseTicks(data), domain:xDom }
+          : { axis:null, domain:xDom },
+        y: { axis:null, domain:[0,1] },
+        marks: [
+          Plot.rect(data, {x1: d => d.i - 0.5, x2: d => d.i + 0.5, y1:0, y2:1,
+            fill: d => ribbonFill(steps.get(d.i))}),
+          Plot.ruleY([0, 1], {stroke:t.grid, strokeWidth:0.5}),
+        ],
+      });
+      attachTip(rib, priceTipHTML);
+      return [fig, rib];
+    };
+
+    const uMin = Math.max(20, Math.min(...data.map(b=>b.urgent)) * 0.7);
+    const uMax = Math.max(...data.map(b=>b.urgent)) * 1.35;
+    const oMax = Math.max(CTRL.floor + 12, Math.max(...data.map(b=>b.optimistic)) * 1.3);
+    const laneHead = (color, title, sub) =>
+      Object.assign(document.createElement("div"),
+        {innerHTML: `<span style="font-size:11px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:${color}">${title}</span>` +
+                    ` <span style="font-size:11px;color:var(--muted)">${sub}</span>`});
+
+    const [figU, ribU] = lanePanel({
+      color: tok("--urgent"), price: "urgent", queue: "qu",
+      height: 210, yType: logScale ? "log" : "linear", yDomain: [uMin, uMax],
+      yTicks: [0.02,0.05,0.1,0.2,0.5,1,2,5,10,20,50].map(a=>a*1e6/REF_TX_BYTES).filter(v=>v>=uMin&&v<=uMax),
+      liveQ: lqLive.qu, withAxis: false,
     });
-    const el = document.getElementById("panel-price"); el.innerHTML=""; el.append(fig);
-    separateRightLabels(fig, [quLabel, qoLabel]);
-    attachTip(fig, priceTipHTML);
+    const [figO, ribO] = lanePanel({
+      color: tok("--optimistic"), price: "optimistic", queue: "qo",
+      height: 150, yType: "linear", yDomain: [Math.max(0, CTRL.floor - 6), oMax],
+      yTicks: undefined,
+      liveQ: lqLive.qo, withAxis: true,
+    });
+
+    host.innerHTML = "";
+    host.append(
+      laneHead(tok("--urgent"), "Urgent · fast lane", "— quote (₳/KB), queue (pale), and each block's fullness vs the ½ target below"),
+      figU, ribU,
+      laneHead(tok("--optimistic"), "Optimistic · patient lane", "— its own scale: the floor and the ±25% steps are visible here"),
+      figO, ribO);
+    const cap = document.createElement("div");
+    cap.className = "hint";
+    cap.style.margin = "2px 0 0";
+    cap.innerHTML = `ribbons = the repricing dial unrolled, one cell per block: <span style="color:var(--live);font-weight:650">red</span> — the ledger stepped this price up (block over the ½ target) · <span style="color:var(--good);font-weight:650">green</span> — stepped down · grey — held. On the patient lane the strict red/green alternation under load is <em>certification pacing</em>: only the block that applies a certified endorser block counts its usage; the rounds in between count zero.`;
+    host.append(cap);
   }
 
   // ---- "why the price moved": invert the realized step into a utilisation ----
@@ -1253,10 +1318,17 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     `<div class="tiprow"><span class="sw" style="background:${color}"></span>`+
     `<span class="tiplane" style="color:${color}">${label}</span><span>${html}</span></div>`;
   const nodeBadge = b => b.node ? ` <span class="hint" style="margin:0">· forged by <strong>${b.node}</strong></span>` : "";
+  function stepFromFullness(pct){
+    if (pct == null) return null;
+    const step = Math.max(-25, Math.min(25, (pct/100 - 0.5) / 2 * 100));
+    return `ran ${Math.round(pct)}% full → next step ${step > 0 ? "+" : ""}${step.toFixed(1)}%`;
+  }
   function priceTipHTML(b){
+    const su = b.rbBytes != null ? ` · ${stepFromFullness(rbPct(b))}` : "";
+    const so = b.ebBytes != null && b.eb ? ` · ${stepFromFullness(ebPct(b))}` : "";
     return `<div class="tiphead">block #${b.i}${nodeBadge(b)}</div>`+
-      tipRow(tok("--urgent"), "URGENT", `<strong>${adaKb(b.urgent)}</strong> · ${(b.qu??0).toLocaleString()} tx waiting · ${b.rb} tx in block`)+
-      tipRow(tok("--optimistic"), "OPTIMISTIC", `<strong>${adaKb(b.optimistic)}</strong> · ${(b.qo??0).toLocaleString()} tx waiting · ${b.eb} tx in block`);
+      tipRow(tok("--urgent"), "URGENT", `<strong>${adaKb(b.urgent)}</strong> · ${(b.qu??0).toLocaleString()} tx waiting · ${b.rb} tx in block${su}`)+
+      tipRow(tok("--optimistic"), "OPTIMISTIC", `<strong>${adaKb(b.optimistic)}</strong> · ${(b.qo??0).toLocaleString()} tx waiting · ${b.eb} tx in block${so}`);
   }
   // Block fullness in % of the lane's BYTE budget — the true measure (capacity
   // is bytes; tx counts mislead when fat and thin txs mix). Records from before
