@@ -1448,14 +1448,15 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       && (!b.ebHash || b.ebHash === pb.ebHash) && st !== "certified";
     const cert = !b.eb ? "" :
       reShown ? ` · <span style="color:var(--muted)">⟳ the same endorser block, still in flight — not counted again</span>` :
-      st === "certified" ? ` · <span style="color:var(--good)">✓ certified</span>` :
+      st === "certified" ? ` · <span style="color:var(--good)">✓ certified later — counts when its certificate lands</span>` :
       st === "awaiting" ? ` · <span style="color:var(--live)">⏳ awaiting votes</span>` :
       st === "superseded" ? ` · <span style="color:var(--shed)">↷ superseded</span>` :
       st === "missed" ? ` · <span style="color:var(--live)">✖ certification stalled</span>` : "";
     const est = pctIsReal(b) ? "" : " (est.)";
+    const landed = b.certIn ? `<div style="color:var(--good);font-size:11px;margin-top:2px">📥 a certificate landed here — that endorser block's ${(b.certIn.numTxs||0).toLocaleString()} tx count in THIS block's pricing</div>` : "";
     return `<div class="tiphead">block #${b.i}${nodeBadge(b)}</div>`+
       tipRow(tok("--rb"), "URGENT", `RB · <strong>${rbPct(b)}%</strong> full${est} · ${b.rb} tx, applied instantly`)+
-      tipRow(tok("--eb"), "OPTIMISTIC", `EB · <strong>${ebPct(b)}%</strong> full${est} · ${b.eb} tx${cert}`)+
+      tipRow(tok("--eb"), "OPTIMISTIC", `EB · <strong>${ebPct(b)}%</strong> full${est} · ${b.eb} tx${cert}`)+ landed +
       `<div class="tiphint">% of the lane's byte budget · click for the full diary entry</div>`;
   }
 
@@ -1976,13 +1977,16 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       // new round re-shows the SAME stuck EB (same hash) — say so, or the diary
       // reads as if many endorser blocks were waiting at once.
       const sameEb = prev && b.ebHash && prev.ebHash === b.ebHash;
-      const ebBadge = !b.eb ? "" :
-        st === "certified" ? ` · <span style="color:var(--eb)">EB ✓ certified</span>` :
+      const certLanded = b.certIn
+        ? ` · <span style="color:var(--good)">📥 certificate landed — the ${(b.certIn.numTxs||0).toLocaleString()}-tx endorser block COUNTS in this block's pricing</span>`
+        : "";
+      const ebBadge = (!b.eb ? "" :
+        st === "certified" ? ` · <span style="color:var(--eb)">EB ✓ certified later — counts when its certificate lands</span>` :
         st === "awaiting" ? (sameEb
           ? ` · <span style="color:var(--live)">EB ⏳ still the same endorser block, awaiting votes</span>`
           : ` · <span style="color:var(--live)">EB ⏳ awaiting votes</span>`) :
         st === "superseded" ? ` · <span style="color:var(--shed)">EB ↷ superseded</span>` :
-        st === "missed" ? ` · <span style="color:var(--live)">EB ✖ certification stalled</span>` : "";
+        st === "missed" ? ` · <span style="color:var(--live)">EB ✖ certification stalled</span>` : "") + certLanded;
       rows.push(
         `<div style="padding:5px 0;border-bottom:1px solid var(--border,#eee)">`+
         `<strong>block #${b.i}</strong>${nodeBadge(b)} · `+
