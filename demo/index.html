@@ -1036,7 +1036,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const lqLive = liveQueues() || {qu: now.qu||0, qo: now.qo||0, est: false};
 
     const lanePanel = (opts) => {
-      const {color, price, queue, height, yType, yDomain, yTicks, liveQ} = opts;
+      const {color, price, queue, height, yType, yDomain, yTicks, liveQ, queueThresholdBytes, queueThresholdLabel} = opts;
       const steps = realizedSteps(data, price);
       const qMax = Math.max(1, ...data.map(b => b[queue]||0));
       const [y0, y1] = yDomain;
@@ -1056,6 +1056,18 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         Plot.dot([{i:qnow.i, y:qLiveY}], {x:"i", y:"y", fill:color, r:3, stroke:tok("--panel-bg"), strokeWidth:1.2, fillOpacity:0.85}),
         Plot.text([{i:qnow.i, y:qLiveY}], {x:"i", y:"y", text:[qLabel + " waiting"],
           dx:8, textAnchor:"start", fill:color, fillOpacity:0.75, fontSize:10.5, fontWeight:600}),
+        ...(queueThresholdBytes ? (() => {
+          // The min-fill gate, drawn on the queue's own scale: when the pale
+          // queue area sits BELOW this line, the lane pools instead of
+          // issuing its block.
+          const thrTxs = queueThresholdBytes / laneTxBytes("eb", "ebBytes");
+          const yThr = yq(Math.min(thrTxs, qMax));
+          return [
+            Plot.ruleY([yThr], {stroke:color, strokeOpacity:0.55, strokeWidth:1, strokeDasharray:"6,3"}),
+            Plot.text([{y:yThr}], {x: () => xDom[0], y:"y", text:[queueThresholdLabel], dx:4, dy:-6,
+              textAnchor:"start", fill:color, fillOpacity:0.75, fontSize:9.5}),
+          ];
+        })() : []),
         Plot.line(data, {x:"i", y:price, stroke:color, strokeWidth:2.2, curve:"monotone-x"}),
         Plot.dot([now], {x:"i", y:price, fill:color, r:3.5, stroke:tok("--panel-bg"), strokeWidth:1.5}),
         Plot.text([now], {x:"i", y:price, text:[adaKb(now[price])], dx:8, textAnchor:"start", fill:color, fontSize:12, fontWeight:600}),
@@ -1115,6 +1127,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       height: 150, yType: "linear", yDomain: [Math.max(0, CTRL.floor - 6), oMax],
       yTicks: undefined,
       liveQ: lqLive.qo, withAxis: true,
+      queueThresholdBytes: RB_BYTE_BUDGET / 2,
+      queueThresholdLabel: "min fill (45 KB) — queue below this line: the lane pools, no EB issues",
     });
 
     host.innerHTML = "";
