@@ -842,6 +842,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         <span><span class="sw" style="background:var(--eb); opacity:.3; outline:1.5px dashed var(--eb)"></span>EB awaiting votes (doesn't count yet)</span>
         <span><span class="sw" style="background:var(--shed); opacity:.4; outline:1.5px dashed var(--shed)"></span>EB superseded (replaced before certification — its tx moved to a later block)</span>
         <span><span class="sw" style="background:var(--live); opacity:.25; outline:1.5px dashed var(--live)"></span>EB certification stalled (nothing certifies — see the Certification-miss scenario)</span>
+        <span><span class="sw" style="background:var(--eb); opacity:.1"></span>ghost — the same in-flight EB re-announced (one cargo, shown once per round; only the applied one counts)</span>
       </div>
       <p class="hint" style="margin:2px 0 4px">Click a block to unfold its diary entry.</p>
       <figure id="panel-comp" style="margin:0"></figure>
@@ -1401,7 +1402,12 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 
   function compTipHTML(b){
     const st = ebStatus(b);
+    const idx = all.findIndex(r => r.i === b.i);
+    const pb = idx > 0 ? all[idx-1] : null;
+    const reShown = pb && b.eb > 0 && b.eb === pb.eb && b.ebBytes === pb.ebBytes
+      && (!b.ebHash || b.ebHash === pb.ebHash) && st !== "certified";
     const cert = !b.eb ? "" :
+      reShown ? ` · <span style="color:var(--muted)">⟳ the same endorser block, still in flight — not counted again</span>` :
       st === "certified" ? ` · <span style="color:var(--good)">✓ certified</span>` :
       st === "awaiting" ? ` · <span style="color:var(--live)">⏳ awaiting votes</span>` :
       st === "superseded" ? ` · <span style="color:var(--shed)">↷ superseded</span>` :
@@ -1465,11 +1471,19 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     // between pairs, so the grouping reads at a glance.
     const bands = blocks.map(b => ({x1: b.i - 0.48, x2: b.i + 0.48, i: b.i}));
     const rects = [];
+    let prevB = null;
     for (const b of blocks){
       const st = ebStatus(b);
+      // The SAME in-flight endorser block gets re-announced round after round
+      // while it waits — one cargo, many bars. Draw the repeats as ghosts, or
+      // a congested stretch reads as "a full EB delivered every block".
+      const reShown = prevB && b.eb > 0 && b.eb === prevB.eb && b.ebBytes === prevB.ebBytes
+        && (!b.ebHash || b.ebHash === prevB.ebHash) && st !== "certified";
       if (b.rb) rects.push({x1:b.i-0.42, x2:b.i-0.01, y1:0, y2:rbPct(b), kind:"rb", i:b.i});
       if (b.eb) rects.push({x1:b.i+0.01, x2:b.i+0.42, y1:0, y2:ebPct(b),
-                            kind: st === "awaiting" ? "ebwait" : st === "missed" ? "ebmiss" : st === "superseded" ? "ebsuper" : "eb", i:b.i});
+                            kind: reShown ? "ebsame"
+                              : st === "awaiting" ? "ebwait" : st === "missed" ? "ebmiss" : st === "superseded" ? "ebsuper" : "eb", i:b.i});
+      if (b.ebHash || b.eb) prevB = b;
     }
     const FILL = { rb: tok("--rb"), eb: tok("--eb"), ebwait: tok("--eb") };
     const xDom = [blocks[0].i - 0.5, Math.max(blocks[blocks.length-1].i, blocks[0].i + 39) + 0.5];
@@ -1500,6 +1514,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         Plot.rect(rects.filter(d => d.kind === "ebsuper"), {x1:"x1", x2:"x2", y1:"y1", y2:"y2",
           fill: tok("--shed"), fillOpacity: 0.25,
           stroke: tok("--shed"), strokeDasharray: "2,3",
+        }),
+        Plot.rect(rects.filter(d => d.kind === "ebsame"), {x1:"x1", x2:"x2", y1:"y1", y2:"y2",
+          fill: tok("--eb"), fillOpacity: 0.10,
         }),
       ],
     });
