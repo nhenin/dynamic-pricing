@@ -594,9 +594,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       </div>
       <div class="rr-lane" style="--lane:var(--optimistic)">
         <div class="t">Optimistic · patient lane</div>
-        Same rule, but against the endorser block's <strong>12,000,000 bytes</strong> (~133× bigger). At realistic
-        traffic it is rarely half-full, so this price spends most of its life <strong>resting at the floor</strong> —
-        that is the mechanism working, not a bug.
+        Same rule against its own <strong>12,000,000-byte</strong> budget (~133× bigger) — but judged <strong>only
+        when one of its endorser blocks actually counts</strong> (its certificate landed). Full EB counted → +25%
+        steps that compound; light EB → −25%; <strong>no EB counted → the price holds</strong>. A full pool now
+        climbs the staircase; a light trickle still decays to the floor.
       </div>
     </div>
     <p class="hint" style="margin-top:12px">One last guard, after both lanes update: the urgent price is kept at least
@@ -1167,7 +1168,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const cap = document.createElement("div");
     cap.className = "hint";
     cap.style.margin = "2px 0 0";
-    cap.innerHTML = `ribbons = the repricing dial unrolled, one cell per block: <span style="color:var(--live);font-weight:650">red</span> — the ledger stepped this price up (block over the ½ target) · <span style="color:var(--good);font-weight:650">green</span> — stepped down · grey — held. On the patient lane the strict red/green alternation under load is <em>certification pacing</em>: only the block that applies a certified endorser block counts its usage; the rounds in between count zero.`;
+    cap.innerHTML = `ribbons = the repricing dial unrolled, one cell per block: <span style="color:var(--live);font-weight:650">red</span> — the ledger stepped this price up (block over the ½ target) · <span style="color:var(--good);font-weight:650">green</span> — stepped down · grey — held. On the patient lane, grey cells are rounds with <em>no endorser block counted</em> (certification in flight) — the price holds there and only steps when a 📥 certificate lands, so a full pool climbs a staircase instead of ping-ponging.`;
     host.append(cap);
   }
 

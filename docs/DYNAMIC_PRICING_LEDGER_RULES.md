@@ -274,3 +274,17 @@ rule (and the mempool) judge the transactions of block *N+1* against.
 | Fee split + conservation + LEDGER flush | `Dijkstra/Rules/Utxos.hs`, Conway `produced`, `Dijkstra/Rules/Ledger.hs` | 4 |
 | B1 + B2 (`divupTransition`) | `Dijkstra/Rules/Bbody.hs` | 5 |
 | `blockType`, `placementLane`, U3, EB path | consensus coordination | 6 |
+
+### B2 refinement (2026-07-09, Nicolas's rule): each lane reprices on ITS OWN block's verdict
+
+The urgent lane is judged every block (a regular block comes every round — an empty one really
+means an idle lane). The optimistic lane is judged **only when one of its endorser blocks
+actually counts in the block** (its certificate landed and its bytes applied): full EB counted
+→ +25% steps that COMPOUND; light EB counted → −25%; **no EB counted → the price holds**.
+Rationale, measured live: certification pacing leaves most rounds with no optimistic block to
+judge, and treating those as "the lane ran empty" made the price ping-pong floor ↔ floor×1.25
+while the pool sat completely full — the price never rationed the overload. With
+reprice-on-application, a full pool ⇒ full EBs published ⇒ a rising staircase; a light trickle
+still publishes small EBs and decays the price to the floor; only a lane with zero applications
+freezes its price (no buyers — the first application unfreezes it).
+
