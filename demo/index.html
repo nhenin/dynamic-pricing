@@ -1043,6 +1043,18 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       const yq = q => yType === "log"
         ? Math.exp(Math.log(y0) + (q/qMax)*(Math.log(y1)-Math.log(y0)))
         : y0 + (q/qMax)*(y1-y0);
+      // The pool's effective ceiling, in queue terms: where admission stops and
+      // senders are held back. Derived from the live pool reading (whichever of
+      // the byte cap or the diffusion-time budget is the tighter one).
+      const poolCapTxs = (() => {
+        const pool = now.pool; if (!pool) return null;
+        const pfx = queue;                              // "qu" | "qo"
+        const maxPct = Math.max(pool[pfx + "BytePct"] ?? 0, pool[pfx + "TimePct"] ?? 0);
+        const count = now[queue] || 0;
+        if (count > 0 && maxPct > 2) return count * 100 / maxPct;
+        const cap = pool[pfx + "Cap"];
+        return cap ? cap / laneTxBytes(queue === "qu" ? "rb" : "eb", queue === "qu" ? "rbBytes" : "ebBytes") : null;
+      })();
       const qdata = data.map(b => ({i:b.i, q:yq(b[queue]||0)}));
       const qnow = qdata[qdata.length-1];
       const qLiveY = yq(Math.min(liveQ, qMax));
@@ -1056,6 +1068,20 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         Plot.dot([{i:qnow.i, y:qLiveY}], {x:"i", y:"y", fill:color, r:3, stroke:tok("--panel-bg"), strokeWidth:1.2, fillOpacity:0.85}),
         Plot.text([{i:qnow.i, y:qLiveY}], {x:"i", y:"y", text:[qLabel + " waiting"],
           dx:8, textAnchor:"start", fill:color, fillOpacity:0.75, fontSize:10.5, fontWeight:600}),
+        ...(poolCapTxs ? (() => {
+          const label = `pool cap ≈ ${Math.round(poolCapTxs).toLocaleString()} tx — senders held back here`;
+          if (poolCapTxs <= qMax * 1.15){
+            const yCap = yq(Math.min(poolCapTxs, qMax));
+            return [
+              Plot.ruleY([yCap], {stroke:color, strokeOpacity:0.4, strokeWidth:1.4, strokeDasharray:"10,4"}),
+              Plot.text([{y:yCap}], {x: () => xDom[1], y:"y", text:[label], dx:-4, dy:-6,
+                textAnchor:"end", fill:color, fillOpacity:0.7, fontSize:9.5}),
+            ];
+          }
+          return [Plot.text([{y: yDomain[1]}], {x: () => xDom[1], y:"y",
+            text:[`pool cap ≈ ${Math.round(poolCapTxs).toLocaleString()} tx (above this view)`],
+            dx:-4, dy:10, textAnchor:"end", fill:color, fillOpacity:0.55, fontSize:9.5})];
+        })() : []),
         ...(queueThresholdBytes ? (() => {
           // The min-fill gate, drawn on the queue's own scale: when the pale
           // queue area sits BELOW this line, the lane pools instead of
