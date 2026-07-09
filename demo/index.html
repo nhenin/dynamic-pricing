@@ -153,18 +153,6 @@
       background:var(--panel-bg); color:var(--text); cursor:pointer; }
     .chart-toolbar > button.on { background:var(--live); border-color:var(--live); color:#fff; }
     .chart-toolbar .seg button.on { background:var(--text); color:var(--panel-bg); }
-    /* Certification readout: the patient lane's pacemaker in plain numbers. */
-    .cert-readout { border:1px solid var(--border); border-left:3px solid var(--optimistic); border-radius:9px;
-      padding:10px 13px; margin:8px 0 12px; background:color-mix(in srgb,var(--optimistic) 5%,transparent); }
-    .cert-readout .cr-head { font-size:13px; font-weight:700; color:var(--optimistic); margin-bottom:3px; }
-    .cert-readout .cr-lede { font-size:12.5px; color:var(--muted); line-height:1.55; margin:0 0 8px; }
-    .cert-readout .cr-stats { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
-    .cert-readout .cr-stat { border:1px solid var(--border); border-radius:8px; padding:5px 10px; min-width:96px; background:var(--panel-bg); }
-    .cert-readout .cr-stat .k { font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
-    .cert-readout .cr-stat .v { font-size:16px; font-weight:700; font-variant-numeric:tabular-nums; }
-    .cert-readout .cr-flight { font-size:12.5px; font-weight:650; }
-    .cert-readout .cr-recent { font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
-    .cert-readout .cr-recent div { padding:1px 0; }
     .evstatus { font-size:14px; font-weight:600; padding:9px 12px; border-radius:7px; margin-top:8px; }
     .evstatus.alive { background:rgba(22,163,74,.12); color:var(--good); border:1px solid var(--good); }
     .evstatus.dead { background:rgba(239,68,68,.12); color:var(--live); border:1px solid var(--live); }
@@ -882,10 +870,6 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     <figure id="panel-price" style="margin:0"></figure>
 
     <h3 style="margin-top:18px">The blocks — how full each one ran, and whether it certified</h3>
-    <!-- Certification readout: the patient lane's pacemaker, made legible. The
-         optimistic price only steps on a 📥 block, so this is where its
-         staircase comes from — Nicolas asked to see certification detail here. -->
-    <div id="cert-readout" class="cert-readout"></div>
     <p class="hint">Each pale column is <strong>one forged block</strong>: its RB (teal) and, when the round issued
       one, its EB (amber) side by side — a column with no amber is a round that <em>pooled</em> below the min-fill
       threshold. An RB holds the 90,112-byte mainnet block budget, an EB the real mainnet <strong>12&nbsp;MB</strong>
@@ -2055,75 +2039,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   function render(){
     priceChart();
     compChart(); readout(); repriceScale(); actorChart(); loopDiagram(); txLifecycle(); laneHealth(); evRender();
-    renderLedgerLog(); certReadout();
+    renderLedgerLog();
   }
 
-  // ---- certification readout: the patient lane's pacemaker, in plain numbers --
-  // Each optimistic price step happens ONLY on a block that counts a certificate
-  // (its 📥). This box says how often that happens, how long each endorser block
-  // waited from announce to counting, and whether one is in flight right now —
-  // the "why does the optimistic price staircase?" answered with live figures.
-  function certReadout(){
-    const host = document.getElementById("cert-readout");
-    if (!host) return;
-    if (all.length < 2){ host.style.display = "none"; return; }
-    host.style.display = "";
-    // announce → count: match each certificate-landing block to the block that
-    // first announced its endorser block (same ebHash), like the arrows do.
-    const announced = all.filter(b => (b.eb > 0 || (b.ebBytes||0) > 0));
-    const certEvents = [];
-    for (const b of all){
-      if (!b.certIn || !b.certIn.hash) continue;
-      const src = [...all].reverse().find(a => a.i < b.i && a.ebHash === b.certIn.hash);
-      certEvents.push({at: b.i, from: src ? src.i : null,
-                       wait: src ? b.i - src.i : null, numTxs: b.certIn.numTxs || 0});
-    }
-    // Median over the most recent certifications — reflects current behaviour
-    // and isn't dragged by a stale prefix after a stream restart.
-    const waits = certEvents.slice(-12).map(e => e.wait).filter(w => w != null);
-    const medWait = waits.length ? waits.slice().sort((a,b)=>a-b)[Math.floor(waits.length/2)] : null;
-    const pace = blockPaceSeconds();
-    // Slots between consecutive blocks: the cadence the 10-slot cert gap is
-    // measured against. A gap under 10 slots delays certification a block.
-    const slotGaps = [];
-    for (let i = 1; i < all.length; i++)
-      if (all[i].slot != null && all[i-1].slot != null)
-        slotGaps.push(all[i].slot - all[i-1].slot);
-    const medGap = slotGaps.length ? slotGaps.slice().sort((a,b)=>a-b)[Math.floor(slotGaps.length/2)] : null;
-    const gapsUnder10 = slotGaps.filter(g => g <= 10).length;
-    // in flight now: the most recent announced EB whose hash hasn't been counted.
-    const countedHashes = new Set(all.filter(b => b.certIn && b.certIn.hash).map(b => b.certIn.hash));
-    let inFlight = null;
-    for (let i = all.length - 1; i >= 0 && i >= all.length - 24; i--){
-      const b = all[i];
-      if (b.ebHash && (b.eb > 0 || (b.ebBytes||0) > 0) && !countedHashes.has(b.ebHash)){
-        inFlight = {hash: b.ebHash.slice(0,8), from: b.i, numTxs: b.eb || 0,
-                    waiting: (all[all.length-1].i) - b.i};
-        break;
-      }
-    }
-    const stat = (k, v) => `<div class="cr-stat"><div class="k">${k}</div><div class="v">${v}</div></div>`;
-    const recent = certEvents.slice(-4).reverse().map(e =>
-      `<div>📥 block #${e.at} — counted a <strong>${e.numTxs.toLocaleString()}-tx</strong> endorser block` +
-      (e.wait != null ? `, waited <strong>${e.wait}</strong> block${e.wait === 1 ? "" : "s"} from announce (#${e.from})` : "") +
-      `</div>`).join("");
-    host.innerHTML =
-      `<div class="cr-head">🗳️ Certification — the patient lane's pacemaker</div>` +
-      `<p class="cr-lede">The optimistic price steps <strong>only on a 📥 block</strong> — where a committee certificate lands and its endorser block's bytes finally count. Between those, the price <strong>holds</strong>. That is why it climbs a staircase, not a smooth line — and why a full pool needs certificates to keep landing to keep the price rising.` +
-      ` <span style="color:var(--muted)"><em>In this prototype a certificate usually lands in the <strong>next block</strong> — the intended behaviour — and slips to the one after only when two blocks fall within 10 slots of each other (the leios node's 10-slot certification gap; see block cadence). The certificate itself is mocked here (zero latency), so that gap is the only thing pacing it.</em></span>` +
-      `</p>` +
-      `<div class="cr-stats">` +
-        stat("EBs announced", announced.length.toLocaleString()) +
-        stat("certificates counted", certEvents.length.toLocaleString()) +
-        (medGap != null ? stat("block cadence", `~${medGap} slots <span class="hint" style="margin:0">median between blocks — random (the node forges ~1 slot in 20, so gaps run ~1–100+)${gapsUnder10 ? ` · ${gapsUnder10} recent under 10` : ""}</span>`) : "") +
-      `</div>` +
-      `<div class="cr-flight">` +
-      (inFlight
-        ? `⏳ <span style="color:var(--optimistic)">in flight now:</span> endorser block <code>${inFlight.hash}</code> (${inFlight.numTxs.toLocaleString()} tx) announced at #${inFlight.from}, <strong>${inFlight.waiting}</strong> block${inFlight.waiting===1?"":"s"} awaiting its certificate — <span class="hint" style="margin:0">only one is in flight at a time, so the whole patient lane waits on it</span>`
-        : `✓ <span style="color:var(--good)">no endorser block waiting</span> — the last announced one has been counted`) +
-      `</div>` +
-      (recent ? `<div class="cr-recent" style="margin-top:6px">${recent}</div>` : "");
-  }
 
   // ---- the ledger's diary: one line per forged block, newest first -------------
   function renderLedgerLog(){
