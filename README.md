@@ -69,23 +69,19 @@ mempool). Transaction/block lifecycle diagram:
 
 ## What's in the box
 
-| Piece | What it carries |
-|---|---|
-| [`cardano-ledger`](https://github.com/nhenin/cardano-ledger-specs) (submodule) | The mechanism itself: pricing state, Dijkstra tx-body fields (inclusion / bid / refund account), the UTXO `BidBelowQuote` rule, usage accounting, the DIVUP block-close rule and the per-lane EIP-1559 controller |
-| [`ouroboros-consensus`](https://github.com/nhenin/ouroboros-consensus) (submodule) | The two-lane mempool: per-lane admission (bytes + diffusion-time), O(1) urgent admission, eviction-on-price-rise, first-come conflicts, forge selection with the min-fill rule, pool observability |
-| [`cardano-node`](https://github.com/nhenin/cardano-node) (submodule) | The lane feeder (a crowd of simulated senders choosing lanes against live prices), forge lane/price/queue traces, demo controls (per-lane queue flush) |
-| [`cardano-api`](https://github.com/nhenin/cardano-api) / [`cardano-cli`](https://github.com/nhenin/cardano-cli-dp) (submodules) | Dijkstra tx-body support for the new fields |
-| [`ouroboros-leios`](https://github.com/nhenin/ouroboros-leios-dp) (submodule) | The 3-node proto-devnet, the run supervisor, the trace tailer and the demo web server |
-| [`demo/index.html`](demo/index.html) | The dashboard (a single self-contained page) |
-| [`docs/`](docs/) | Design docs + the latest team-sync notes ([docs/TEAM_SYNC_2026-07-06.md](docs/TEAM_SYNC_2026-07-06.md)) |
+Each **diff** link is the native GitHub review view (full change set + line
+comments) of the `nicolas/dynamic-pricing` branch versus its upstream base.
 
-Each compare link shows the whole change set against its upstream base:
-[ledger](https://github.com/nhenin/cardano-ledger-specs/compare/leios-prototype...nicolas/dynamic-pricing) ·
-[consensus](https://github.com/nhenin/ouroboros-consensus/compare/leios-prototype...nicolas/dynamic-pricing) ·
-[node](https://github.com/nhenin/cardano-node/compare/leios-prototype...nicolas/dynamic-pricing) ·
-[api](https://github.com/nhenin/cardano-api/compare/leios-prototype...nicolas/dynamic-pricing) ·
-[cli](https://github.com/nhenin/cardano-cli-dp/compare/leios-prototype...nicolas/dynamic-pricing) ·
-[leios](https://github.com/nhenin/ouroboros-leios-dp/compare/main...nicolas/dynamic-pricing)
+| Piece | What it carries | Diff |
+|---|---|---|
+| [`cardano-ledger`](https://github.com/nhenin/cardano-ledger-specs) (submodule) | The mechanism itself: pricing state, Dijkstra tx-body fields (inclusion / bid / refund account), the UTXO `BidBelowQuote` rule, usage accounting, the DIVUP block-close rule and the per-lane EIP-1559 controller | [diff](https://github.com/nhenin/cardano-ledger-specs/compare/leios-prototype...nicolas/dynamic-pricing) |
+| [`ouroboros-consensus`](https://github.com/nhenin/ouroboros-consensus) (submodule) | The two-lane mempool: per-lane admission (bytes + diffusion-time), O(1) urgent admission, eviction-on-price-rise, first-come conflicts, forge selection with the min-fill rule, pool observability | [diff](https://github.com/nhenin/ouroboros-consensus/compare/leios-prototype...nicolas/dynamic-pricing) |
+| [`cardano-node`](https://github.com/nhenin/cardano-node) (submodule) | The lane feeder (a crowd of simulated senders choosing lanes against live prices), forge lane/price/queue traces, demo controls (per-lane queue flush) | [diff](https://github.com/nhenin/cardano-node/compare/leios-prototype...nicolas/dynamic-pricing) |
+| [`cardano-api`](https://github.com/nhenin/cardano-api) (submodule) | Dijkstra tx-body support for the new fields | [diff](https://github.com/nhenin/cardano-api/compare/leios-prototype...nicolas/dynamic-pricing) |
+| [`cardano-cli`](https://github.com/nhenin/cardano-cli-dp) (submodule) | Dijkstra tx-body CLI support | [diff](https://github.com/nhenin/cardano-cli-dp/compare/leios-prototype...nicolas/dynamic-pricing) |
+| [`ouroboros-leios`](https://github.com/nhenin/ouroboros-leios-dp) (submodule) | The 3-node proto-devnet, the run supervisor, the trace tailer and the demo web server | [diff](https://github.com/nhenin/ouroboros-leios-dp/compare/main...nicolas/dynamic-pricing) |
+| [`demo/index.html`](demo/index.html) | The dashboard (a single self-contained page) | — |
+| [`docs/`](docs/) | Design docs + the latest team-sync notes ([docs/TEAM_SYNC_2026-07-06.md](docs/TEAM_SYNC_2026-07-06.md)) | — |
 
 ## Running the demo
 

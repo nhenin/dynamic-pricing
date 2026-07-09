@@ -843,6 +843,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         <span><span class="sw" style="background:var(--shed); opacity:.4; outline:1.5px dashed var(--shed)"></span>EB superseded (replaced before certification — its tx moved to a later block)</span>
         <span><span class="sw" style="background:var(--live); opacity:.25; outline:1.5px dashed var(--live)"></span>EB certification stalled (nothing certifies — see the Certification-miss scenario)</span>
         <span><span class="sw" style="background:var(--eb); opacity:.1"></span>ghost — the same in-flight EB re-announced (one cargo, shown once per round; only the applied one counts)</span>
+        <span><span class="sw" style="background:var(--good); opacity:.6"></span>→ 📥 certification arrow — from the block that announced an EB to the block whose certificate makes it count; the arrow's length IS the certification wait</span>
       </div>
       <p class="hint" style="margin:2px 0 4px">Click a block to unfold its diary entry.</p>
       <figure id="panel-comp" style="margin:0"></figure>
@@ -1526,6 +1527,15 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
                               : st === "awaiting" ? "ebwait" : st === "missed" ? "ebmiss" : st === "superseded" ? "ebsuper" : "eb", i:b.i});
       if (b.ebHash || b.eb) prevB = b;
     }
+    // The certification pipeline, drawn: an arc from the block that ANNOUNCES
+    // an endorser block to the block whose certificate makes it COUNT. The
+    // gap between the two ends of each arc IS certification time.
+    const certArcs = [];
+    for (const b of blocks){
+      if (!b.certIn || !b.certIn.hash) continue;
+      const src = [...blocks].reverse().find(a => a.i < b.i && a.ebHash === b.certIn.hash);
+      if (src) certArcs.push({x1: src.i, y1: Math.min(100, ebPct(src)) + 3, x2: b.i, y2: 12, i: b.i});
+    }
     const FILL = { rb: tok("--rb"), eb: tok("--eb"), ebwait: tok("--eb") };
     const xDom = [blocks[0].i - 0.5, Math.max(blocks[blocks.length-1].i, blocks[0].i + 39) + 0.5];
     const fig = Plot.plot({
@@ -1559,6 +1569,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         Plot.rect(rects.filter(d => d.kind === "ebsame"), {x1:"x1", x2:"x2", y1:"y1", y2:"y2",
           fill: tok("--eb"), fillOpacity: 0.10,
         }),
+        Plot.arrow(certArcs, {x1:"x1", y1:"y1", x2:"x2", y2:"y2",
+          stroke: tok("--good"), strokeOpacity: 0.65, strokeWidth: 1.4, bend: 25, headLength: 7}),
+        Plot.text(certArcs, {x:"x2", y: () => 6, text: () => "📥", fontSize: 11}),
       ],
     });
     const el = document.getElementById("panel-comp"); el.innerHTML=""; el.append(fig);
