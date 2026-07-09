@@ -275,7 +275,24 @@ rule (and the mempool) judge the transactions of block *N+1* against.
 | B1 + B2 (`divupTransition`) | `Dijkstra/Rules/Bbody.hs` | 5 |
 | `blockType`, `placementLane`, U3, EB path | consensus coordination | 6 |
 
-### B2 refinement (2026-07-09, Nicolas's rule): each lane reprices on ITS OWN block's verdict
+### B2 refinement (2026-07-09, Nicolas's rule): each lane reprices on ITS OWN block's verdict (SYMMETRIC, both lanes)
+
+The ranking block (urgent) and a certified endorser block (optimistic) are
+applied in **separate** reprices: a ranking-block reprice carries urgent bytes
+and zero optimistic; a certification reprice carries the endorser block's
+optimistic bytes and **zero urgent** (measured live via a ledger probe). So each
+lane must only move on a reprice that carries ITS OWN transport's bytes:
+
+- **Urgent** holds on a pure certification reprice (zero urgent bytes, optimistic
+  bytes present); it steps on ranking-block reprices — a full RB raises the
+  price, a genuinely empty RB (both lanes zero, no urgent demand) decays it.
+- **Optimistic** holds on ranking-block and idle reprices (zero optimistic
+  bytes); it steps only when its endorser block counts (Giorgos's rule).
+
+Without the urgent half, every certification was read as "the urgent lane ran
+empty" and dropped the urgent price 25% between full blocks — the sawtooth seen
+under saturation, the exact mirror of the optimistic ping-pong. With both halves,
+each lane climbs a clean staircase under a full pool.
 
 The urgent lane is judged every block (a regular block comes every round — an empty one really
 means an idle lane). The optimistic lane is judged **only when one of its endorser blocks

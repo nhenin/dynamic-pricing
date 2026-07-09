@@ -139,6 +139,32 @@
     .seg { display:inline-flex; border:1px solid var(--border); border-radius:7px; overflow:hidden; vertical-align:middle; }
     .seg button { border:none; background:var(--panel-bg); color:var(--text); padding:4px 11px; cursor:pointer; font-size:12px; }
     .seg button.on { background:var(--urgent); color:#fff; }
+    /* Chart toolbar: pinned to the top of the History section while its charts
+       scroll by, so the controls are always next to what they change. */
+    /* top clears the always-pinned .secnav (which sits at top:0, z-index:60) so
+       the two never overlap while scrolling the History section. */
+    .chart-toolbar { position:sticky; top:52px; z-index:40; display:flex; gap:16px; align-items:center; flex-wrap:wrap;
+      width:max-content; max-width:100%; margin:10px 0 6px; padding:7px 12px;
+      background:var(--panel-bg); border:1px solid var(--border); border-radius:10px;
+      box-shadow:0 2px 12px rgba(0,0,0,.10); }
+    .chart-toolbar .tool-group { display:inline-flex; align-items:center; gap:7px; }
+    .chart-toolbar .tool-label { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+    .chart-toolbar > button { font-size:12px; padding:5px 11px; border:1px solid var(--border); border-radius:7px;
+      background:var(--panel-bg); color:var(--text); cursor:pointer; }
+    .chart-toolbar > button.on { background:var(--live); border-color:var(--live); color:#fff; }
+    .chart-toolbar .seg button.on { background:var(--text); color:var(--panel-bg); }
+    /* Certification readout: the patient lane's pacemaker in plain numbers. */
+    .cert-readout { border:1px solid var(--border); border-left:3px solid var(--optimistic); border-radius:9px;
+      padding:10px 13px; margin:8px 0 12px; background:color-mix(in srgb,var(--optimistic) 5%,transparent); }
+    .cert-readout .cr-head { font-size:13px; font-weight:700; color:var(--optimistic); margin-bottom:3px; }
+    .cert-readout .cr-lede { font-size:12.5px; color:var(--muted); line-height:1.55; margin:0 0 8px; }
+    .cert-readout .cr-stats { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+    .cert-readout .cr-stat { border:1px solid var(--border); border-radius:8px; padding:5px 10px; min-width:96px; background:var(--panel-bg); }
+    .cert-readout .cr-stat .k { font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
+    .cert-readout .cr-stat .v { font-size:16px; font-weight:700; font-variant-numeric:tabular-nums; }
+    .cert-readout .cr-flight { font-size:12.5px; font-weight:650; }
+    .cert-readout .cr-recent { font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+    .cert-readout .cr-recent div { padding:1px 0; }
     .evstatus { font-size:14px; font-weight:600; padding:9px 12px; border-radius:7px; margin-top:8px; }
     .evstatus.alive { background:rgba(22,163,74,.12); color:var(--good); border:1px solid var(--good); }
     .evstatus.dead { background:rgba(239,68,68,.12); color:var(--live); border:1px solid var(--live); }
@@ -174,7 +200,7 @@
     svg { background:transparent; }
   
 /* section navigation + numbered section headers */
-.secnav{position:sticky;top:0;z-index:40;display:flex;gap:4px;margin:14px 0 14px;padding:6px 0 0;
+.secnav{position:sticky;top:0;z-index:60;display:flex;gap:4px;margin:14px 0 14px;padding:6px 0 0;
   background:var(--bg,#fff);border-bottom:2px solid var(--border,#e5e7eb)}
 .secnav a{font-size:14.5px;font-weight:650;text-decoration:none;color:var(--muted);
   padding:9px 18px 10px;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0}
@@ -259,8 +285,19 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 #chart-tip .tiprow{display:flex;align-items:center;gap:7px;margin-top:5px;white-space:nowrap}
 #chart-tip .tiplane{font-size:10.5px;font-weight:750;letter-spacing:.05em}
 #chart-tip .tiphint{margin-top:6px;font-size:11px;color:var(--muted)}
-.nowcard{border:1.5px solid var(--border);border-left:5px solid var(--lane);border-radius:12px;padding:12px 16px}
+.nowcard{position:relative;border:1.5px solid var(--border);border-left:5px solid var(--lane);border-radius:12px;padding:12px 16px;transition:border-color .3s,box-shadow .3s}
 .nowcard .lane-tag{font-size:11px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:var(--lane)}
+/* BLOCKED state: a lane whose pool is full — the node refuses new txs, so
+   senders are held back. Loud on purpose (Nicolas asked for a strong signal),
+   and per-card, so a blocked lane next to a flowing one shows the two are
+   independent. */
+.nowcard.blocked{border-color:var(--live);box-shadow:0 0 0 1.5px var(--live),0 0 18px color-mix(in srgb,var(--live) 35%,transparent);animation:blockPulse 1.4s ease-in-out infinite}
+@keyframes blockPulse{0%,100%{box-shadow:0 0 0 1.5px var(--live),0 0 14px color-mix(in srgb,var(--live) 28%,transparent)}50%{box-shadow:0 0 0 2px var(--live),0 0 26px color-mix(in srgb,var(--live) 55%,transparent)}}
+.block-badge{display:none;align-items:center;gap:6px;float:right;font-size:11px;font-weight:800;letter-spacing:.05em;
+  color:#fff;background:var(--live);padding:3px 9px;border-radius:999px;text-transform:uppercase;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.nowcard.blocked .block-badge{display:inline-flex}
+.nowcard.blocked .lane-tag{color:var(--live)}
+@media (prefers-reduced-motion: reduce){ .nowcard.blocked{animation:none} }
 .nowcard .nowval{font-size:26px;font-weight:750;font-variant-numeric:tabular-nums;margin:2px 0}
 .nowcard .trend{font-size:13px;font-weight:650;margin-left:8px}
 .nowcard .sub{font-size:12.5px;color:var(--muted);line-height:1.6}
@@ -308,9 +345,6 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     </div>
     <div id="controls">
       <span class="status" id="status"><span class="dot"></span><span id="status-text">…</span></span>
-      <button id="pause">⏸ Pause</button>
-      <button id="toggle-view">View: last 80</button>
-      <button id="logtoggle">Price axis: log</button>
       <button id="theme">◐ Theme</button>
     </div>
   </header>
@@ -814,6 +848,22 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 
   <details class="panel" id="pane-history" open>
     <summary class="panehead"><h2>History <span style="font-weight:400;color:var(--muted)">— quotes &amp; blocks, correlated, block by block</span></h2><span class="chev" aria-hidden="true">▾</span></summary>
+    <!-- Chart controls live WITH the charts they drive, and stick to the top
+         while you scroll through the section — not orphaned in the page header. -->
+    <div class="chart-toolbar" id="chart-toolbar" aria-label="chart controls">
+      <button id="pause" type="button" aria-pressed="false"
+        title="Freeze the live updates — charts, live cards and journals stop moving so you can read a moment in peace. Nothing is lost: resuming catches up instantly.">⏸ Freeze</button>
+      <span class="tool-group"><span class="tool-label">window</span>
+        <span class="seg" id="win-seg" role="group" aria-label="history window">
+          <button type="button" data-win="last" aria-pressed="false" title="Follow the chain: the last 80 blocks only — the moving now.">last 80 blocks</button>
+          <button type="button" data-win="all" aria-pressed="false" title="Everything since the chain started — the whole story, staircases included.">full run</button>
+        </span></span>
+      <span class="tool-group"><span class="tool-label">price scale</span>
+        <span class="seg" id="scale-seg" role="group" aria-label="price scale">
+          <button type="button" data-scale="linear" aria-pressed="false" title="Even spacing — best when prices stay in one range.">linear</button>
+          <button type="button" data-scale="log" aria-pressed="false" title="Every ×10 takes the same height — keeps the floor readable when a climb dwarfs it.">log</button>
+        </span></span>
+    </div>
     <p class="hint">Each lane's <span data-term="quote">quote</span> climbs while its blocks fill and eases back as they
       drain — and the two lines are <em>meant</em> to look different: the urgent quote does the moving, while the
       optimistic one rests at the floor unless something fills a meaningful share of its 12&nbsp;MB block. The <span data-term="discrimination floor">fast-lane premium</span> (a mechanism parameter — 3× on this
@@ -832,6 +882,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     <figure id="panel-price" style="margin:0"></figure>
 
     <h3 style="margin-top:18px">The blocks — how full each one ran, and whether it certified</h3>
+    <!-- Certification readout: the patient lane's pacemaker, made legible. The
+         optimistic price only steps on a 📥 block, so this is where its
+         staircase comes from — Nicolas asked to see certification detail here. -->
+    <div id="cert-readout" class="cert-readout"></div>
     <p class="hint">Each pale column is <strong>one forged block</strong>: its RB (teal) and, when the round issued
       one, its EB (amber) side by side — a column with no amber is a round that <em>pooled</em> below the min-fill
       threshold. An RB holds the 90,112-byte mainnet block budget, an EB the real mainnet <strong>12&nbsp;MB</strong>
@@ -953,7 +1007,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   const ACTOR_SAMPLE = SIM.actors;
 
   const WINDOW = 80;                               // blocks shown in the windowed view
-  let logScale = true, paused = false, mode = "unknown";
+  let logScale = (localStorage.getItem("dp-log-scale") ?? "1") === "1", paused = false, mode = "unknown";
   // Full run by default — the last-80 crop hid the story ("c'est dans le coin,
   // on n'y comprend rien"); the choice persists like the folded panels do.
   let viewAll = (localStorage.getItem("dp-view-all") ?? "1") === "1";
@@ -1015,14 +1069,16 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     if (Math.abs(step) < 0.004) return hexToRgba(tok("--muted"), 0.10);
     return hexToRgba(tok(step > 0 ? "--live" : "--good"), alpha);
   }
-  // The step the ledger ACTUALLY took at each block — derived from the price
-  // itself, so the ribbon can never contradict the curve above it. (For the
-  // patient lane this exposes certification pacing: applied-EB rounds step
-  // up, held rounds count zero usage and step down.)
+  // The step the ledger took AT each block — its OWN reprice verdict. The price
+  // a block publishes becomes the tip the NEXT block builds on, so a block's own
+  // step is price[k+1]/price[k]. Attributing it to the causing block (not the
+  // one that first shows it) lines the ribbon up with that block's certificate
+  // marker (📥): on a certificate round the patient lane steps and the fast
+  // lane holds, both on the SAME cell.
   function realizedSteps(data, field){
     const out = new Map();
-    for (let k = 1; k < data.length; k++){
-      const a = data[k-1][field], b = data[k][field];
+    for (let k = 0; k < data.length - 1; k++){
+      const a = data[k][field], b = data[k+1][field];
       out.set(data[k].i, a > 0 ? b/a - 1 : null);
     }
     return out;
@@ -1129,6 +1185,13 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         marks: [
           Plot.rect(data, {x1: d => d.i - 0.5, x2: d => d.i + 0.5, y1:0, y2:1,
             fill: d => ribbonFill(steps.get(d.i))}),
+          // Certificate rounds, marked on BOTH ribbons: the patient lane STEPS
+          // here (its endorser block counts), the fast lane HOLDS here (a
+          // certificate applies the patient block, not a ranking block — not an
+          // urgent verdict). Same 📥, opposite behaviour — the mechanism at a glance.
+          Plot.text(data.filter(d => d.certIn && d.certIn.hash),
+            {x: d => d.i, y: 0.5, text: () => "📥", fontSize: 9,
+             title: d => `certificate landed — ${(d.certIn.numTxs||0).toLocaleString()}-tx endorser block counts`}),
           Plot.ruleY([0, 1], {stroke:t.grid, strokeWidth:0.5}),
         ],
       });
@@ -1168,7 +1231,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const cap = document.createElement("div");
     cap.className = "hint";
     cap.style.margin = "2px 0 0";
-    cap.innerHTML = `ribbons = the repricing dial unrolled, one cell per block: <span style="color:var(--live);font-weight:650">red</span> — the ledger stepped this price up (block over the ½ target) · <span style="color:var(--good);font-weight:650">green</span> — stepped down · grey — held. On the patient lane, grey cells are rounds with <em>no endorser block counted</em> (certification in flight) — the price holds there and only steps when a 📥 certificate lands, so a full pool climbs a staircase instead of ping-ponging.`;
+    cap.innerHTML = `ribbons = the repricing dial unrolled, one cell per block: <span style="color:var(--live);font-weight:650">red</span> — the ledger stepped this price up (block over the ½ target) · <span style="color:var(--good);font-weight:650">green</span> — stepped down · grey — held. <strong>📥 marks a certificate round</strong>, and the two lanes do the <em>opposite</em> there: the <span style="color:var(--optimistic);font-weight:650">patient lane steps</span> (its endorser block finally counts — the staircase), while the <span style="color:var(--urgent);font-weight:650">fast lane holds</span> (a certificate applies the patient block, not a ranking block, so it is not an urgent verdict). Each lane only moves on its own transport's rounds — which is why neither ping-pongs under a full pool.`;
     host.append(cap);
   }
 
@@ -1613,10 +1676,14 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
             : st === "missed"
               ? `<span style="color:var(--live)">✖ certification stalled</span> — nothing is certifying; its ${b.eb} tx are stuck waiting` + (b.ebHash?` <span class="hint" style="margin:0">(eb ${b.ebHash})</span>`:``)
               : `certification status unknown`;
+    const gap = (b.slot != null && prev && prev.slot != null) ? b.slot - prev.slot : null;
+    const slotInfo = b.slot != null
+      ? ` <span class="hint" style="margin:0">· slot ${b.slot.toLocaleString()}${gap != null ? ` (+${gap} since #${prev.i})` : ""}</span>`
+      : "";
     host.style.display = "";
     host.innerHTML =
       `<div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:6px">`+
-      `<strong>block #${b.i}</strong>${nodeBadge(b)}`+
+      `<strong>block #${b.i}</strong>${slotInfo}${nodeBadge(b)}`+
       `<button type="button" class="scenario" style="padding:2px 10px" onclick="this.parentElement.parentElement.style.display='none'">close</button></div>`+
       `<div style="margin-top:4px; line-height:1.7">`+
       `① <span style="color:var(--rb)">fast lane: ${b.rb} urgent tx</span> — applied first, instantly<br>`+
@@ -1758,18 +1825,33 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // The pool bar: how close this lane's mempool is to the limit that will
   // hold its senders back. Two limits race — bytes and diffusion-time — so
   // the bar shows the fuller one and names it.
+  // Per-lane blocked latch (hysteresis: trips at 97% full, clears below 90%).
+  const laneBlockedState = {u: false, o: false};
+  function setLaneBlocked(prefix, pct, ceiling){
+    const was = laneBlockedState[prefix];
+    const now = pct >= 97 ? true : pct < 90 ? false : was;
+    laneBlockedState[prefix] = now;
+    const card = document.getElementById(prefix + "-card");
+    const badge = document.getElementById(prefix + "-badge");
+    if (card) card.classList.toggle("blocked", now);
+    if (badge) badge.innerHTML = now ? `⛔ Blocked · ${ceiling} full` : "⛔ Blocked";
+  }
   function updatePoolBar(prefix, pool, lane){
     const bar = document.getElementById(prefix + "-pool");
     const label = document.getElementById(prefix + "-pool-label");
     if (!bar || !label) return;
     const bytePct = pool?.[lane + "BytePct"], timePct = pool?.[lane + "TimePct"];
     if (bytePct == null && timePct == null){
-      bar.style.width = "0%"; label.textContent = ""; return;
+      bar.style.width = "0%"; label.textContent = ""; setLaneBlocked(prefix, 0, "space"); return;
     }
     const byBytes = (bytePct ?? 0) >= (timePct ?? 0);
     const pct = byBytes ? bytePct : timePct;
     bar.style.width = Math.min(100, pct) + "%";
     bar.classList.toggle("blocked", pct >= 95);
+    // Loud, card-level BLOCKED state: the pool is at its ceiling, so the node
+    // refuses new txs and senders are held back on THIS lane. Hysteresis (on at
+    // 97, off below 90) keeps it from flickering when the pool hovers near full.
+    setLaneBlocked(prefix, pct, byBytes ? "space" : "time budget");
     // The pool's two ceilings, with their actual numbers: space in bytes, and
     // the diffusion-time budget in seconds — translated into bytes at today's
     // tx mix so the tighter ceiling is a size you can picture.
@@ -1851,7 +1933,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         `<div class="n" id="lv-i"></div><div class="hint" style="margin:0" id="lv-node"></div>`+
         `<div class="hint" style="margin:0" id="lv-eta-label"></div>`+
         `<div class="etabar"><i id="lv-eta-bar"></i></div></div>`+
-        `<div class="nowcard" style="--lane:var(--urgent)">`+
+        `<div class="nowcard" id="u-card" style="--lane:var(--urgent)">`+
+        `<span class="block-badge" id="u-badge">⛔ Blocked</span>`+
         `<div class="lane-tag">Urgent · fast lane</div>`+
         `<div class="nowval"><span id="u-price"></span> <span class="hint" style="margin:0;font-size:13px" id="u-unit"></span><span id="u-trend"></span></div>`+
         `<div class="sub" id="u-sub"></div>`+
@@ -1859,7 +1942,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         `<div class="sub" id="u-pool-label" style="font-size:11.5px"></div>`+
         `<div class="sub" id="u-wait"></div>`+
         `<div id="u-strip"></div></div>`+
-        `<div class="nowcard" style="--lane:var(--optimistic)">`+
+        `<div class="nowcard" id="o-card" style="--lane:var(--optimistic)">`+
+        `<span class="block-badge" id="o-badge">⛔ Blocked</span>`+
         `<div class="lane-tag">Optimistic · patient lane</div>`+
         `<div class="nowval"><span id="o-price"></span> <span class="hint" style="margin:0;font-size:13px" id="o-unit"></span><span id="o-trend"></span></div>`+
         `<div class="sub" id="o-sub"></div>`+
@@ -1871,7 +1955,15 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const set = (id, html) => { const el = document.getElementById(id); if (el && el.innerHTML !== html) el.innerHTML = html; };
     const setW = (id, w) => { const el = document.getElementById(id); if (el) el.style.width = w; };
     set("lv-i", `#${b.i}`);
-    set("lv-node", `latest block${b.node ? " · by <strong>"+b.node+"</strong>" : ""}`);
+    // Slots elapsed since the previous block: the cadence the 10-slot
+    // certification gap is measured against (a gap < 10 delays certification).
+    const prevSlot = prev && prev.slot;
+    const slotGap = (b.slot != null && prevSlot != null) ? b.slot - prevSlot : null;
+    const slotBit = b.slot != null
+      ? ` · slot <strong>${b.slot.toLocaleString()}</strong>` +
+        (slotGap != null ? ` <span class="hint" style="margin:0">(+${slotGap} slot${slotGap === 1 ? "" : "s"} since #${prev.i})</span>` : "")
+      : "";
+    set("lv-node", `latest block${slotBit}${b.node ? " · by <strong>"+b.node+"</strong>" : ""}`);
     const pace = blockPaceSeconds(), eta = nextBlockEta();
     set("lv-eta-label", `next block ${etaText(eta)}`);
     const etaEl = document.getElementById("lv-eta-bar");
@@ -1963,7 +2055,74 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   function render(){
     priceChart();
     compChart(); readout(); repriceScale(); actorChart(); loopDiagram(); txLifecycle(); laneHealth(); evRender();
-    renderLedgerLog();
+    renderLedgerLog(); certReadout();
+  }
+
+  // ---- certification readout: the patient lane's pacemaker, in plain numbers --
+  // Each optimistic price step happens ONLY on a block that counts a certificate
+  // (its 📥). This box says how often that happens, how long each endorser block
+  // waited from announce to counting, and whether one is in flight right now —
+  // the "why does the optimistic price staircase?" answered with live figures.
+  function certReadout(){
+    const host = document.getElementById("cert-readout");
+    if (!host) return;
+    if (all.length < 2){ host.style.display = "none"; return; }
+    host.style.display = "";
+    // announce → count: match each certificate-landing block to the block that
+    // first announced its endorser block (same ebHash), like the arrows do.
+    const announced = all.filter(b => (b.eb > 0 || (b.ebBytes||0) > 0));
+    const certEvents = [];
+    for (const b of all){
+      if (!b.certIn || !b.certIn.hash) continue;
+      const src = [...all].reverse().find(a => a.i < b.i && a.ebHash === b.certIn.hash);
+      certEvents.push({at: b.i, from: src ? src.i : null,
+                       wait: src ? b.i - src.i : null, numTxs: b.certIn.numTxs || 0});
+    }
+    // Median over the most recent certifications — reflects current behaviour
+    // and isn't dragged by a stale prefix after a stream restart.
+    const waits = certEvents.slice(-12).map(e => e.wait).filter(w => w != null);
+    const medWait = waits.length ? waits.slice().sort((a,b)=>a-b)[Math.floor(waits.length/2)] : null;
+    const pace = blockPaceSeconds();
+    // Slots between consecutive blocks: the cadence the 10-slot cert gap is
+    // measured against. A gap under 10 slots delays certification a block.
+    const slotGaps = [];
+    for (let i = 1; i < all.length; i++)
+      if (all[i].slot != null && all[i-1].slot != null)
+        slotGaps.push(all[i].slot - all[i-1].slot);
+    const medGap = slotGaps.length ? slotGaps.slice().sort((a,b)=>a-b)[Math.floor(slotGaps.length/2)] : null;
+    const gapsUnder10 = slotGaps.filter(g => g <= 10).length;
+    // in flight now: the most recent announced EB whose hash hasn't been counted.
+    const countedHashes = new Set(all.filter(b => b.certIn && b.certIn.hash).map(b => b.certIn.hash));
+    let inFlight = null;
+    for (let i = all.length - 1; i >= 0 && i >= all.length - 24; i--){
+      const b = all[i];
+      if (b.ebHash && (b.eb > 0 || (b.ebBytes||0) > 0) && !countedHashes.has(b.ebHash)){
+        inFlight = {hash: b.ebHash.slice(0,8), from: b.i, numTxs: b.eb || 0,
+                    waiting: (all[all.length-1].i) - b.i};
+        break;
+      }
+    }
+    const stat = (k, v) => `<div class="cr-stat"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    const recent = certEvents.slice(-4).reverse().map(e =>
+      `<div>📥 block #${e.at} — counted a <strong>${e.numTxs.toLocaleString()}-tx</strong> endorser block` +
+      (e.wait != null ? `, waited <strong>${e.wait}</strong> block${e.wait === 1 ? "" : "s"} from announce (#${e.from})` : "") +
+      `</div>`).join("");
+    host.innerHTML =
+      `<div class="cr-head">🗳️ Certification — the patient lane's pacemaker</div>` +
+      `<p class="cr-lede">The optimistic price steps <strong>only on a 📥 block</strong> — where a committee certificate lands and its endorser block's bytes finally count. Between those, the price <strong>holds</strong>. That is why it climbs a staircase, not a smooth line — and why a full pool needs certificates to keep landing to keep the price rising.` +
+      ` <span style="color:var(--muted)"><em>In this prototype a certificate usually lands in the <strong>next block</strong> — the intended behaviour — and slips to the one after only when two blocks fall within 10 slots of each other (the leios node's 10-slot certification gap; see block cadence). The certificate itself is mocked here (zero latency), so that gap is the only thing pacing it.</em></span>` +
+      `</p>` +
+      `<div class="cr-stats">` +
+        stat("EBs announced", announced.length.toLocaleString()) +
+        stat("certificates counted", certEvents.length.toLocaleString()) +
+        (medGap != null ? stat("block cadence", `~${medGap} slots <span class="hint" style="margin:0">median between blocks — random (the node forges ~1 slot in 20, so gaps run ~1–100+)${gapsUnder10 ? ` · ${gapsUnder10} recent under 10` : ""}</span>`) : "") +
+      `</div>` +
+      `<div class="cr-flight">` +
+      (inFlight
+        ? `⏳ <span style="color:var(--optimistic)">in flight now:</span> endorser block <code>${inFlight.hash}</code> (${inFlight.numTxs.toLocaleString()} tx) announced at #${inFlight.from}, <strong>${inFlight.waiting}</strong> block${inFlight.waiting===1?"":"s"} awaiting its certificate — <span class="hint" style="margin:0">only one is in flight at a time, so the whole patient lane waits on it</span>`
+        : `✓ <span style="color:var(--good)">no endorser block waiting</span> — the last announced one has been counted`) +
+      `</div>` +
+      (recent ? `<div class="cr-recent" style="margin-top:6px">${recent}</div>` : "");
   }
 
   // ---- the ledger's diary: one line per forged block, newest first -------------
@@ -2438,9 +2597,18 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   function escapeHtml(x){
     return String(x).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   }
+  // The dropped total, told by CAUSE — "N dropped" alone begs the question why.
+  function droppedBreakdown(g){
+    const parts = [];
+    if (g.evicted) parts.push(`💸 ${g.evicted.toLocaleString()} priced out`);
+    if (g.orphaned) parts.push(`⛓ ${g.orphaned.toLocaleString()} orphaned`);
+    if (g.flushed) parts.push(`🚿 ${g.flushed.toLocaleString()} flushed`);
+    return parts;
+  }
   function journalCounts(g){
     if (!g) return `<span class="hint">no txs yet</span>`;
     const walk = g.shed ? ` · walked away ${g.shed.toLocaleString()}` : "";
+    const dropped = (g.evicted || 0) + (g.orphaned || 0) + (g.flushed || 0);
     return `sent ${g.sent.toLocaleString()} ` +
       `(<span style="color:var(--urgent)">${g.urgent.toLocaleString()} urgent</span> / ` +
       `<span style="color:var(--optimistic)">${g.optimistic.toLocaleString()} optimistic</span>${walk}) · ` +
@@ -2450,7 +2618,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           `<span style="color:var(--optimistic)">${g.waitingOptimistic.toLocaleString()} optimistic</span>)`
         : "") + ` · ` +
       `<b style="color:var(--good)">${g.forged.toLocaleString()} forged</b>` +
-      ((g.evicted || g.orphaned) ? ` · <b style="color:var(--live)">${(g.evicted + (g.orphaned || 0)).toLocaleString()} dropped</b>` : "");
+      (dropped ? ` · <b style="color:var(--live)">${dropped.toLocaleString()} dropped</b>` +
+        ` <span class="hint" style="margin:0">(${droppedBreakdown(g).join(" · ")})</span>` : "");
   }
   function renderCrowdJournal(){
     const host = document.getElementById("crowd-journal");
@@ -2476,6 +2645,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
                  at: null, g});
     if (!rows.length){
       host.innerHTML = `<span class="hint">waiting for the first change… (touch any control above)</span>`;
+      host._lastHtml = null;
       return;
     }
     journalRows = rows;
@@ -2491,21 +2661,25 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       }
       return r.at ? `since ${r.at.toLocaleTimeString()}` : "";
     };
-    host.innerHTML = rows.map((r, idx) =>
+    const htmlOut = rows.map((r, idx) =>
       `<div class="cmdrow" data-idx="${idx}" style="border-bottom:1px dashed var(--border); padding:2px 0; cursor:pointer" title="click for details">` +
       `<span style="color:var(--muted)">${rangeLabel(r)}</span> ` +
       `<b>${escapeHtml(r.desc)}</b><br>` +
       `<span style="font-variant-numeric:tabular-nums">${journalCounts(r.g)}</span></div>`
     ).join("");
+    // Rewrite only on change: replacing the rows between a click's press and
+    // release detaches its target and the click never reaches the handler.
+    if (host._lastHtml !== htmlOut){ host._lastHtml = htmlOut; host.innerHTML = htmlOut; }
   }
   function renderPressureJournal(){
     const host = document.getElementById("pressure-journal");
     if (!host) return;
     if (!pressureJournal.length){
       host.innerHTML = `<span class="hint">no scenario yet — flip one on in the ⚡ card above.</span>`;
+      host._lastHtml = null;
       return;
     }
-    host.innerHTML = pressureJournal.map((r, idx) => {
+    const rowsOut = pressureJournal.map((r, idx) => {
       const end = pressureWindowEnd(r);
       const range = end
         ? `${r.at.toLocaleTimeString()} → ${end.toLocaleTimeString()}`
@@ -2531,10 +2705,17 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         `<span style="color:var(--muted)">${range}</span> ⚡ <b>${escapeHtml(r.desc)}</b><br>` +
         `<span style="font-variant-numeric:tabular-nums">${effect}</span></div>`;
     }).join("");
+    // same click-vs-rewrite guard as the crowd journal
+    if (host._lastHtml !== rowsOut){ host._lastHtml = rowsOut; host.innerHTML = rowsOut; }
   }
   function renderJournals(){ renderCrowdJournal(); renderPressureJournal(); }
   // ---- command detail popup --------------------------------------------------
-  function cmdModalShow(row){
+  // Both modals fill their body only after awaited fetches; a second click while
+  // the first is loading must not paint the first's body under the second's
+  // title. Each open takes a token; a stale open bails before writing.
+  let modalSeq = 0;
+  async function cmdModalShow(row){
+    const myTurn = ++modalSeq;
     const bd = document.getElementById("cmd-modal-backdrop");
     const md = document.getElementById("cmd-modal");
     let when = row.at ? " — since " + row.at.toLocaleTimeString() : "";
@@ -2551,8 +2732,15 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       `<div style="border:1px solid var(--border); border-radius:8px; padding:6px 10px; min-width:104px">` +
       `<div class="hint" style="margin:0">${label}</div>` +
       `<div style="font-size:16px; font-weight:650; font-variant-numeric:tabular-nums${color ? `; color:${color}` : ""}">${val}</div></div>`;
+    const laneSplit = (u, o) => ((u || 0) + (o || 0))
+      ? ` <span class="hint" style="margin:0">(${(u || 0).toLocaleString()}u / ${(o || 0).toLocaleString()}o)</span>` : "";
     let html = "";
     if (g){
+      // A finished generation has nothing in flight — the sent/accepted gap is
+      // the door's work, worth its own cell. On the live one it is just churn.
+      const finished = (Date.now() - (g.lastSeen || 0) * 1000) > 30000;
+      const refused = Math.max(0, g.sent - (g.shed || 0) - g.accepted);
+      const showRefused = finished && refused > 2;
       html += `<div style="display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 10px">` +
         cell("sent", g.sent.toLocaleString()) +
         cell("urgent", g.urgent.toLocaleString(), "var(--urgent)") +
@@ -2563,49 +2751,148 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
             ? ` <span class="hint" style="margin:0">(${g.waitingUrgent.toLocaleString()}u / ${g.waitingOptimistic.toLocaleString()}o)</span>` : ""),
           "var(--waiting)") +
         cell("forged", g.forged.toLocaleString(), "var(--good)") +
-        (g.evicted ? cell("priced out", g.evicted.toLocaleString(), "var(--live)") : "") +
-        ((g.orphaned || 0) ? cell("orphaned", g.orphaned.toLocaleString(), "var(--live)") : "") +
+        (g.evicted ? cell("💸 priced out",
+          g.evicted.toLocaleString() + laneSplit(g.evictedUrgent, g.evictedOptimistic), "var(--live)") : "") +
+        ((g.orphaned || 0) ? cell("⛓ orphaned",
+          g.orphaned.toLocaleString() + laneSplit(g.orphanedUrgent, g.orphanedOptimistic), "var(--live)") : "") +
+        ((g.flushed || 0) ? cell("🚿 flushed",
+          g.flushed.toLocaleString() + laneSplit(g.flushedUrgent, g.flushedOptimistic), "var(--live)") : "") +
+        (showRefused ? cell("🚪 not admitted", refused.toLocaleString(), "var(--live)") : "") +
         `</div>` +
         `<p class="hint" style="margin:0 0 10px">These are the txs the simulated crowd sent while this setting was active.
-        Waiting = accepted into the mempool and not yet in a block. Forged includes housekeeping clears (the tx
-        landed on-chain). Orphaned = chained behind an evicted tx — dropped, never forged.</p>`;
+        Waiting = accepted into the mempool, not yet in a block. Forged = landed on-chain (housekeeping clears included).
+        💸 Priced out = evicted while waiting — the lane's climbing quote crossed above the tx's bid cap.
+        ⛓ Orphaned = chained behind an evicted tx, so it could never forge.
+        🚿 Flushed = removed by hand (the presenter's flush command) — a demo reset, not the mechanism.` +
+        (showRefused ? ` 🚪 Not admitted = never let into the queue — usually a bid already below the quote on arrival, or a payment whose parent tx had just been dropped.` : "") +
+        `</p>`;
+      if ((g.evicted || 0) + (g.orphaned || 0) > 0)
+        html += await crowdDropStory(g);
     } else {
       html += `<p class="hint" style="margin:4px 0 10px">No crowd txs recorded for this scenario yet.</p>`;
     }
+    if (myTurn !== modalSeq) return;   // a newer click superseded this one mid-load
     document.getElementById("cmd-modal-body").innerHTML = html;
     bd.style.display = ""; md.style.display = "";
+  }
+  // txid -> did THIS generation drop it: the aggregator's attribution stream,
+  // one line per dropped actor tx. Exact by construction — a time window alone
+  // kidnaps the neighbours' evictions when a sweep lands near a boundary.
+  async function droppedTxidsOf(label){
+    try {
+      const r = await fetch("dropped-txs.ndjson", {cache:"no-store"});
+      if (!r.ok) return null;
+      const text = await r.text();
+      const allLines = text.split("\n");
+      const lines = allLines.length > 8000 ? allLines.slice(-8000) : allLines;
+      const out = new Set();
+      for (const line of lines){
+        if (!line) continue;
+        let d; try { d = JSON.parse(line); } catch(e){ continue; }
+        if (d.gen === label && d.txid) out.add(d.txid);
+      }
+      return out;
+    } catch(e){ return null; }
+  }
+  // The drops, explained with the ledger's own numbers. The detail stream has
+  // one line per evicted tx (bid cap vs what the lane wanted at the crossing,
+  // wait before eviction) — join it to the generation by txid and tell the
+  // story: WHEN the drops came, WHICH lane, and WHY (the quote outran the bids).
+  async function crowdDropStory(g){
+    const all = await evictedTxStream();
+    if (!all) return "";
+    const mine = await droppedTxidsOf(g.label);
+    let drops;
+    if (mine && mine.size){
+      drops = all.filter(d => mine.has(d.txid));
+    } else if (mine){
+      return "";   // attribution stream is live but holds none of this generation's txs
+    } else {
+      // Old run without the attribution stream: fall back to the generation's
+      // window. No slack BEFORE the start — txs that did not exist yet cannot
+      // have been dropped; a minute after the end for the eviction to land.
+      const from = (g.firstSeen || 0) * 1000;
+      const to = ((g.lastSeen || 0) * 1000 || Infinity) + 60000;
+      drops = all.filter(d =>
+        d.burst !== true && (d.stage === "evicted" || d.stage === "orphaned") &&
+        d._when >= from && d._when <= to);
+    }
+    if (!drops.length) return "";
+    const ada = v => "₳" + (v / 1e6).toLocaleString(undefined, {maximumFractionDigits: 2});
+    const bids = drops.map(d => d.bid).filter(v => v != null);
+    const asked = drops.map(d => d.required).filter(v => v != null);
+    const waits = drops.map(d => d.waitedS).filter(v => v != null).sort((a, b) => a - b);
+    let verdict = "";
+    if (bids.length && asked.length){
+      const wait = waits.length
+        ? ` Typical wait before the axe: <strong>${Math.round(waits[Math.floor(waits.length / 2)])} s</strong>` +
+          ` (longest ${Math.round(waits[waits.length - 1])} s).`
+        : "";
+      verdict = `<p class="hint" style="margin:4px 0 8px">Their bid caps ran <strong>${ada(Math.min(...bids))}–${ada(Math.max(...bids))}</strong>,
+        but by the time the climbing quote crossed them the lane wanted up to <strong>${ada(Math.max(...asked))}</strong>
+        for their size. A bid is a cap, not a promise of inclusion: when the published price outruns it, the tx is
+        re-checked at the new price and evicted — that is the mechanism rationing a full pool.${wait}</p>`;
+    }
+    // one line per (minute, lane): a wave of hundreds of identical lines says less
+    const buckets = new Map();
+    for (const d of drops){
+      const minute = new Date(d._when).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+      const k = minute + "|" + d.lane + "|" + d.stage;
+      const b = buckets.get(k) || {minute, lane: d.lane, stage: d.stage, n: 0};
+      b.n += 1;
+      buckets.set(k, b);
+    }
+    const timeline = [...buckets.values()].slice(-14).map(b => {
+      const many = b.n > 1;
+      const why = b.stage === "orphaned"
+        ? (many ? "⛓ orphaned — their parents were evicted" : "⛓ orphaned — its parent was evicted")
+        : (many ? "💸 priced out — the quote outran their bids" : "💸 priced out — the quote outran the bid");
+      return `<div>${b.minute} · <strong>${b.n.toLocaleString()}</strong> ${b.lane} tx${many ? "s" : ""} ${why}</div>`;
+    }).join("");
+    const newest = drops.filter(d => d.stage === "evicted").slice(-12).reverse();
+    const genStartMs = (g.firstSeen || 0) * 1000;
+    return `<div style="border-top:1px solid var(--border); padding-top:8px">` +
+      `<strong style="color:var(--live)">Why they dropped</strong>` + verdict +
+      `<div class="evlog" style="margin-top:2px">` + timeline + `</div>` +
+      (newest.length ? `<div style="margin-top:8px"><strong>The last of them, one by one</strong>
+        <span class="hint" style="margin:0">— the ledger's own verdict for each.</span>
+        <div class="evlog" style="margin-top:4px">` + newest.map(d => evictedTxLine(d, genStartMs)).join("") + `</div></div>` : "") +
+      `</div>`;
   }
   // One line per priced-out tx, with the ledger's own verdict: what it offered
   // (its bid) vs what the lane charged for it when the climbing quote crossed
   // it, and how long it had been waiting. Times in the detail stream are the
   // node's clock — mempool-live pairs that clock with ours, so the scenario's
   // window can be applied to them.
-  async function evictedTxDetails(row){
+  async function evictedTxStream(){
     try {
       const r = await fetch("evicted-txs.ndjson", {cache:"no-store"});
       if (!r.ok) return null;
       const text = await r.text();
       // The stream is append-only and can grow large — only the recent tail can
-      // belong to the scenario's window anyway.
+      // belong to any journal window anyway.
       const allLines = text.split("\n");
       const lines = allLines.length > 5000 ? allLines.slice(-5000) : allLines;
       const offset = (mempoolLive && mempoolLive.at && mempoolLive._rx)
         ? mempoolLive._rx - Date.parse(mempoolLive.at) : 0;
-      const end = pressureWindowEnd(row);
-      const from = row.at.getTime(), to = end ? end.getTime() : Infinity;
       const out = [];
       for (const line of lines){
         if (!line) continue;
         let d; try { d = JSON.parse(line); } catch(e){ continue; }
-        if (d.stage !== "evicted" || !d.t) continue;
-        const when = Date.parse(d.t) + offset;
-        if (when < from || when > to) continue;
-        out.push({...d, _when: when});
+        if (!d.t) continue;
+        out.push({...d, _when: Date.parse(d.t) + offset});
       }
       return out;
     } catch(e){ return null; }
   }
-  function evictedTxLine(d){
+  async function evictedTxDetails(row){
+    const all = await evictedTxStream();
+    if (!all) return null;
+    const end = pressureWindowEnd(row);
+    const from = row.at.getTime(), to = end ? end.getTime() : Infinity;
+    return all.filter(d => d.stage === "evicted" && d._when >= from && d._when <= to);
+  }
+  function evictedTxLine(d, genStartMs){
     const t = new Date(d._when).toLocaleTimeString();
     const ada = v => "₳" + (v/1e6).toLocaleString(undefined, {maximumFractionDigits: 2});
     const isBurst = runCfg && runCfg.t1Bid && d.bid === runCfg.t1Bid;
@@ -2616,12 +2903,19 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const waited = d.waitedS != null
       ? `waited <strong>${d.waitedS >= 60 ? Math.floor(d.waitedS/60) + " min " + Math.round(d.waitedS%60) + " s" : d.waitedS + " s"}</strong>`
       : "wait unknown";
+    // A wait that reaches back before the setting began is not a mystery: the
+    // feeder retries an evicted tx (same txid), and the retry rode this
+    // setting while the mempool wait clock kept running from the first send.
+    const resent = genStartMs && d.waitedS != null && (d._when - d.waitedS * 1000) < genStartMs
+      ? ` <span class="hint" style="margin:0">(first sent under an earlier setting; the retry rode this one)</span>`
+      : "";
     const numbers = d.bid != null && d.required != null
       ? `offered <strong>${ada(d.bid)}</strong>, the lane wanted <strong>${ada(d.required)}</strong> at the crossing`
       : "the quote outran its bid";
-    return `<div>${t} · 💸 <code>${d.txid}</code> — ${d.lane} · ${waited} · ${numbers}${perByte}</div>`;
+    return `<div>${t} · 💸 <code>${d.txid}</code> — ${d.lane} · ${waited} · ${numbers}${perByte}${resent}</div>`;
   }
   async function pressureModalShow(row){
+    const myTurn = ++modalSeq;
     const bd = document.getElementById("cmd-modal-backdrop");
     const md = document.getElementById("cmd-modal");
     const end = pressureWindowEnd(row);
@@ -2698,6 +2992,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         ${pend.toLocaleString()} optimistic tx (the crowd's). Only one endorser block is in flight at a time, so the whole
         patient lane is frozen until the votes return (flip to Quiet to heal).</p></div>`;
     }
+    if (myTurn !== modalSeq) return;   // a newer click superseded this one mid-load
     document.getElementById("cmd-modal-body").innerHTML = html;
     bd.style.display = ""; md.style.display = "";
   }
@@ -2718,6 +3013,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   document.addEventListener("keydown", ev => { if (ev.key === "Escape") cmdModalHide(); });
 
   async function pollLifecycle(){
+    if (paused) return;   // Freeze holds the journals too — they must not tick on
     try {
       const r = await fetch("lifecycle.json", {cache: "no-store"});
       if (!r.ok) return;
@@ -2882,18 +3178,33 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   }
   setInterval(checkPageVersion, 20000); checkPageVersion();
 
-  document.getElementById("pause").onclick = (e)=>{
-    paused = !paused; e.target.textContent = paused ? "▶ Resume" : "⏸ Pause";
-  };
-  document.getElementById("logtoggle").onclick = (e)=>{
-    logScale=!logScale; e.target.textContent="Price axis: "+(logScale?"log":"linear"); priceChart();
-  };
-  document.getElementById("toggle-view").onclick = (e)=>{
-    viewAll=!viewAll;
+  // ---- chart toolbar (top of the History section) ----------------------------
+  function syncChartToolbar(){
+    const fz = document.getElementById("pause");
+    fz.classList.toggle("on", paused);
+    fz.textContent = paused ? "▶ Frozen — click to resume" : "⏸ Freeze";
+    fz.setAttribute("aria-pressed", paused ? "true" : "false");
+    for (const b of document.querySelectorAll("#win-seg button"))
+      b.setAttribute("aria-pressed", (b.dataset.win === "all") === viewAll ? "true" : "false"),
+      b.classList.toggle("on", (b.dataset.win === "all") === viewAll);
+    for (const b of document.querySelectorAll("#scale-seg button"))
+      b.setAttribute("aria-pressed", (b.dataset.scale === "log") === logScale ? "true" : "false"),
+      b.classList.toggle("on", (b.dataset.scale === "log") === logScale);
+  }
+  document.getElementById("pause").onclick = ()=>{ paused = !paused; syncChartToolbar(); };
+  document.getElementById("win-seg").addEventListener("click", ev => {
+    const b = ev.target.closest("button"); if (!b) return;
+    viewAll = b.dataset.win === "all";
     try { localStorage.setItem("dp-view-all", viewAll ? "1" : "0"); } catch(err){}
-    e.target.textContent="View: "+(viewAll?"full run":"last 80"); render();
-  };
-  document.getElementById("toggle-view").textContent = "View: "+(viewAll?"full run":"last 80");
+    syncChartToolbar(); render();
+  });
+  document.getElementById("scale-seg").addEventListener("click", ev => {
+    const b = ev.target.closest("button"); if (!b) return;
+    logScale = b.dataset.scale === "log";
+    try { localStorage.setItem("dp-log-scale", logScale ? "1" : "0"); } catch(err){}
+    syncChartToolbar(); priceChart();
+  });
+  syncChartToolbar();
   document.getElementById("theme").onclick = ()=>{
     document.documentElement.setAttribute("data-theme", theme()==="dark"?"light":"dark"); render();
   };
