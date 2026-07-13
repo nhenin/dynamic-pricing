@@ -746,7 +746,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         is donated to the <strong>treasury</strong>: scarcity revenue funds the commons instead of inflating one
         block producer's luck.</div>
       <div>↩️ <strong>Refund</strong> — bid − quote, the unused headroom — is credited back to the transaction's
-        <strong>refund account</strong> after the block. The bid is a ceiling, not a price.</div>
+        <strong>refund account</strong> after the block. The bid is a ceiling, not a price: this demo's senders bid the
+        live quote × their <span data-term="fee buffer">fee buffer</span> (a cockpit slider), so the refund is exactly
+        the buffer margin.</div>
     </div>
     <p class="hint" style="margin-top:8px">The catch worth knowing: the split only runs for a transaction that <em>names</em>
       a refund account (a registered staking account — this demo uses one of the devnet's genesis delegators). A transaction
@@ -942,10 +944,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       ledger state once per block — measured pots, not a model.</p>
       <div class="nowgrid" id="incgrid" style="grid-template-columns:auto 1fr 1fr 1fr"></div>
       <div class="hint" id="inc-quant" style="line-height:1.6;margin-top:8px"></div>
-      <p class="hint" style="font-size:12px;margin:6px 0 0">Why refunds dwarf the pots here: every simulated sender bids a flat,
-      deliberately generous ceiling (the demo's <code>FEE</code>, 10 ₳) so a rising quote never evicts a chained transaction —
-      while most traffic rides the patient lane near the floor. A real sender would bid just above the quote and get a small
-      refund; the split itself is the mechanism working as designed.</p>
+      <p class="hint" style="font-size:12px;margin:6px 0 0">How the senders bid: each transaction bids its lane's
+      <strong>live quote × the fee buffer</strong> (the cockpit slider — headroom against being priced out while waiting),
+      capped by the demo's <code>FEE</code> ceiling. The refund is that buffer margin coming back once the going rate is
+      charged. Set the buffer to 0 in the cockpit to restore the old flat-ceiling bids and watch the refunds balloon.</p>
     </details>
 
   <details class="panel" id="pane-history" open>
@@ -3303,7 +3305,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       setI("inc-upto", `up to block <strong>#${b.i}</strong>`);
       setI("inc-fees", adaPot(b.fees));           setI("inc-fees-d", plus(delta("fees")));
       setI("inc-don", adaPot(b.donation));        setI("inc-don-d", plus(delta("donation")));
-      setI("inc-ref", adaPot(b.refundsDelivered)); setI("inc-ref-d", plus(delta("refundsDelivered")));
+      const refD = delta("refundsDelivered");
+      const refShare = refD != null && paidD > 0 ? ` — ${Math.round(refD / paidD * 100)}% of what senders paid` : "";
+      setI("inc-ref", adaPot(b.refundsDelivered)); setI("inc-ref-d", refD != null ? `+${adaPot(refD)} this block${refShare}` : "");
       setI("inc-ref-pending", `credited to the refund account · ${adaPot(b.pendingRefunds)} still pending`);
     }
     // What a 1 KB transaction pays right now — derived from the newest block's
