@@ -3192,8 +3192,14 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       }
       throw new Error("no write");
     } catch (e){
+      // No runner behind this address. On localhost that means the static
+      // copy is open next to a live pilot; anywhere else (GitHub Pages, a
+      // file share) it is a frozen capture of a real devnet run.
+      const local = ["localhost", "127.0.0.1"].includes(location.hostname);
       guardChip("ro-chip",
-        "📖 read-only copy — this address can't drive the demo. Open <a href='http://localhost:8780' style='color:#fff;text-decoration:underline'>localhost:8780</a>",
+        local
+          ? "📖 read-only copy — this address can't drive the demo. Open <a href='http://localhost:8780' style='color:#fff;text-decoration:underline'>localhost:8780</a>"
+          : "📸 captured run — a frozen snapshot of a real devnet run; the cockpit drives nothing here",
         "var(--muted)");
     }
   })();
