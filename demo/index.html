@@ -368,37 +368,101 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   <details class="intro" id="sec-about" open>
     <summary>What am I looking at? — the 60-second version</summary>
     <div class="body">
-      <p style="margin-top:0">Blockchains usually charge <strong>one flat fee for everyone</strong>. But a payment that must
-      land in the next few seconds and one that can happily wait an hour are worth very different things — yet they pay
-      the same, and under a traffic jam the urgent one gets stuck behind the patient one.</p>
-      <p><strong>Two-lane dynamic pricing</strong> fixes that by offering two lanes with <em>live, demand-driven prices</em>,
-      like express vs standard postage. You pay for speed only if you need it; if you can wait, you pay less. Prices rise
-      when a lane gets crowded and fall when it clears, so neither lane jams.</p>
-      <div class="lanes">
+      <p style="margin-top:0;font-size:14px">One flat fee treats a swap that must settle <em>now</em> and an overnight batch
+      as the same customer — so under load they queue behind each other, and both overpay or both stall.
+      <strong>Two-lane dynamic pricing</strong> gives the chain two lanes with <em>live, demand-driven prices</em>:
+      pay for speed only when you need it, let patient traffic ride nearly free, and let each price breathe with
+      its own lane's demand.</p>
+
+      <div class="loop-wrap">
+        <svg viewBox="0 0 760 366" width="760" height="366" role="img"
+             aria-label="two lanes with live prices: senders choose a lane, blocks carry them, the fee splits three ways">
+          <defs>
+            <marker id="arrow-about" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"></path>
+            </marker>
+          </defs>
+
+          <!-- senders -->
+          <text x="16" y="46" font-size="11" fill="var(--muted)">every sender weighs value against the live price…</text>
+          <rect x="16" y="62" width="158" height="46" rx="9" fill="var(--urgent)" fill-opacity="0.07" stroke="var(--urgent)" stroke-width="1.5"></rect>
+          <text x="95" y="81" text-anchor="middle" font-size="11.5" font-weight="650" fill="var(--text)">⚡ must land in seconds</text>
+          <text x="95" y="97" text-anchor="middle" font-size="10" fill="var(--muted)">worth paying for speed</text>
+          <rect x="16" y="182" width="158" height="46" rx="9" fill="var(--optimistic)" fill-opacity="0.07" stroke="var(--optimistic)" stroke-width="1.5"></rect>
+          <text x="95" y="201" text-anchor="middle" font-size="11.5" font-weight="650" fill="var(--text)">🧺 can wait a little</text>
+          <text x="95" y="217" text-anchor="middle" font-size="10" fill="var(--muted)">worth waiting to pay less</text>
+
+          <!-- fast lane -->
+          <rect x="234" y="66" width="296" height="38" rx="19" fill="var(--urgent)" fill-opacity="0.12" stroke="var(--urgent)" stroke-width="2"></rect>
+          <text x="382" y="84" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--urgent)">URGENT · the fast lane</text>
+          <text x="382" y="98" text-anchor="middle" font-size="10" fill="var(--text)">a small block every round — scarce, instant</text>
+          <rect x="292" y="30" width="180" height="22" rx="11" fill="none" stroke="var(--urgent)" stroke-width="1.2" stroke-dasharray="4 3"></rect>
+          <text x="382" y="45" text-anchor="middle" font-size="10" fill="var(--urgent)">price: high · steps with demand</text>
+          <path d="M382,52 L382,63" stroke="var(--urgent)" stroke-width="1.2" stroke-dasharray="3 3" fill="none"></path>
+
+          <!-- patient lane -->
+          <rect x="234" y="160" width="296" height="66" rx="16" fill="var(--optimistic)" fill-opacity="0.12" stroke="var(--optimistic)" stroke-width="2"></rect>
+          <text x="382" y="186" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--optimistic)">OPTIMISTIC · the patient lane</text>
+          <text x="382" y="202" text-anchor="middle" font-size="10" fill="var(--text)">the big certified block — ~133× the space</text>
+          <text x="382" y="216" text-anchor="middle" font-size="10" fill="var(--muted)">applied a couple of blocks later, once certified</text>
+          <rect x="292" y="238" width="180" height="22" rx="11" fill="none" stroke="var(--optimistic)" stroke-width="1.2" stroke-dasharray="4 3"></rect>
+          <text x="382" y="253" text-anchor="middle" font-size="10" fill="var(--optimistic)">price: low · rests near the floor</text>
+          <path d="M382,236 L382,228" stroke="var(--optimistic)" stroke-width="1.2" stroke-dasharray="3 3" fill="none"></path>
+
+          <!-- choices -->
+          <path d="M176,85 L230,85" stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#arrow-about)"></path>
+          <path d="M176,205 L230,193" stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#arrow-about)"></path>
+
+          <!-- the chain -->
+          <rect x="598" y="88" width="150" height="118" rx="10" fill="none" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="5 4"></rect>
+          <text x="673" y="80" text-anchor="middle" font-size="11" fill="var(--muted)">one block round</text>
+          <rect x="612" y="104" width="52" height="24" rx="6" fill="var(--rb)" fill-opacity="0.14" stroke="var(--rb)" stroke-width="1.6"></rect>
+          <text x="638" y="120" text-anchor="middle" font-size="10.5" font-weight="650" fill="var(--rb)">RB</text>
+          <rect x="612" y="140" width="122" height="24" rx="6" fill="var(--eb)" fill-opacity="0.14" stroke="var(--eb)" stroke-width="1.6"></rect>
+          <text x="673" y="156" text-anchor="middle" font-size="10.5" font-weight="650" fill="var(--eb)">EB — certified</text>
+          <text x="673" y="186" text-anchor="middle" font-size="9.5" fill="var(--muted)">real blocks, forged by</text>
+          <text x="673" y="198" text-anchor="middle" font-size="9.5" fill="var(--muted)">a 3-node test network</text>
+          <path d="M532,85 L566,85 L566,116 L608,116" stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#arrow-about)"></path>
+          <path d="M532,193 L566,193 L566,152 L608,152" stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#arrow-about)"></path>
+
+          <!-- the money -->
+          <line x1="16" y1="284" x2="744" y2="284" stroke="var(--border)" stroke-width="1"></line>
+          <text x="16" y="306" font-size="11.5" font-weight="650" fill="var(--text)">…and the fee is a ceiling: the ledger charges the going rate, then splits every lovelace</text>
+          <rect x="16" y="318" width="222" height="30" rx="8" fill="#64748b" fill-opacity="0.08" stroke="#64748b" stroke-width="1.5"></rect>
+          <text x="127" y="337" text-anchor="middle" font-size="10.5" fill="var(--text)">base → <tspan font-weight="650">fee pot</tspan> (operators)</text>
+          <rect x="252" y="318" width="240" height="30" rx="8" fill="#7c3aed" fill-opacity="0.08" stroke="#7c3aed" stroke-width="1.5"></rect>
+          <text x="372" y="337" text-anchor="middle" font-size="10.5" fill="var(--text)">premium → <tspan font-weight="650">treasury</tspan> (donated)</text>
+          <rect x="506" y="318" width="238" height="30" rx="8" fill="#0ea5e9" fill-opacity="0.08" stroke="#0ea5e9" stroke-width="1.5"></rect>
+          <text x="625" y="337" text-anchor="middle" font-size="10.5" fill="var(--text)">the rest → <tspan font-weight="650">refunded</tspan> to the sender</text>
+        </svg>
+      </div>
+
+      <div class="lanes" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr))">
         <div class="lane-card" style="border-left:3px solid var(--urgent)">
           <h3 class="tag" style="color:var(--urgent)">Urgent · the fast lane</h3>
-          <p>Time-critical <span data-term="transaction">transactions</span>. Travels in the <span data-term="RB">ranking block</span> —
-          the fast path that's <span data-term="forge">forged</span> (created) every round. Smaller, so space is scarce and its
-          <span data-term="quote">quote</span> climbs fast.</p>
+          <p>Time-critical <span data-term="transaction">transactions</span>, riding the
+          <span data-term="RB">ranking block</span> <span data-term="forge">forged</span> every round. Space is scarce,
+          so its <span data-term="quote">quote</span> climbs fast under load — and eases back as the lane clears.</p>
         </div>
         <div class="lane-card" style="border-left:3px solid var(--optimistic)">
           <h3 class="tag" style="color:var(--optimistic)">Optimistic · the patient lane</h3>
-          <p>Transactions that can wait a little. Travels in the <span data-term="EB">endorser block</span> — bigger and
-          cheaper, for routine traffic that trades a short delay for a lower price.</p>
+          <p>Routine traffic that trades a short delay for a far lower rate, riding the
+          <span data-term="EB">endorser block</span> — ~133× the space, applied once the committee certifies it.
+          Its price rests near the floor unless the lane genuinely fills.</p>
+        </div>
+        <div class="lane-card" style="border-left:3px solid #7c3aed">
+          <h3 class="tag" style="color:#7c3aed">💰 Where the money goes</h3>
+          <p>Your fee is a <span data-term="bid">bid</span> — a ceiling, not a price. The ledger charges the live
+          <span data-term="quote">quote</span>: the base stays in the <span data-term="fee pot">fee pot</span>, the
+          <span data-term="premium">premium</span> is donated to the treasury, the rest is
+          <span data-term="refund">refunded</span>. The 💰 <strong>Incentives</strong> panel measures all three pots live.</p>
         </div>
       </div>
-      <div class="lane-card" style="border-left:3px solid #7c3aed;margin:10px 0 4px">
-        <h3 class="tag" style="color:#7c3aed">💰 Where the money goes</h3>
-        <p>A sender's fee is a <span data-term="bid">bid</span> — a ceiling, not a price. The ledger charges the live
-        <span data-term="quote">quote</span> and splits it: the base fee stays in the <span data-term="fee pot">fee pot</span>
-        for the operators, the <span data-term="premium">premium</span> that congestion charged above it is donated to the
-        <strong>treasury</strong>, and the unused headroom is <span data-term="refund">refunded</span>. The 💰
-        <strong>Incentives</strong> panel shows those three pots measured from the running ledger, block by block.</p>
-      </div>
+
       <p style="margin-bottom:0"><strong>Finding your way:</strong> 📊 <em>Live</em> is the running network —
-      real blocks from a <strong>3-node Cardano Dijkstra test network</strong>, a cockpit to drive the demand, and the
-      prices answering it. ⚙️ <em>The mechanism</em> is the rulebook, with examples that pick up today's live quotes.
-      Any <span class="term" tabindex="0" data-def="Words with a dotted underline have a plain-language definition — hover them on desktop, or open the Glossary tab at the top on any device.">dotted word</span>
+      real blocks, a cockpit to drive the demand, and the prices answering it. The panels below on this page are
+      the rulebook, with examples that pick up today's live quotes. Any
+      <span class="term" tabindex="0" data-def="Words with a dotted underline have a plain-language definition — hover them on desktop, or open the Glossary tab at the top on any device.">dotted word</span>
       has a plain-language definition — hover it, or open <em>Glossary</em> in the menu.</p>
     </div>
   </details>
@@ -878,6 +942,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       ledger state once per block — measured pots, not a model.</p>
       <div class="nowgrid" id="incgrid" style="grid-template-columns:auto 1fr 1fr 1fr"></div>
       <div class="hint" id="inc-quant" style="line-height:1.6;margin-top:8px"></div>
+      <p class="hint" style="font-size:12px;margin:6px 0 0">Why refunds dwarf the pots here: every simulated sender bids a flat,
+      deliberately generous ceiling (the demo's <code>FEE</code>, 10 ₳) so a rising quote never evicts a chained transaction —
+      while most traffic rides the patient lane near the floor. A real sender would bid just above the quote and get a small
+      refund; the split itself is the mechanism working as designed.</p>
     </details>
 
   <details class="panel" id="pane-history" open>
