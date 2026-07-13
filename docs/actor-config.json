@@ -1,0 +1,1 @@
+{"honest": 60, "patient": 20, "impatient": 20, "valueMinAda": 1, "valueMaxAda": 30, "urgencyMin": 0.02, "urgencyMax": 0.35, "urgentLatency": 1, "optimisticLatency": 4, "reservationMultiple": 1, "feeBuffer": 1.2}
