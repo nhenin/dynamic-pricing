@@ -70,7 +70,7 @@
       font-weight:400; line-height:1.45; box-shadow:0 6px 20px rgba(0,0,0,.22); }
 
     /* intro / story */
-    details.intro { border:1px solid var(--border); border-radius:8px; background:var(--accent-soft); max-width:980px; margin-left:auto; margin-right:auto;
+    details.intro { border:1px solid var(--border); border-radius:8px; background:var(--accent-soft);
       padding:0 14px; margin-bottom:16px; }
     details.intro > summary { cursor:pointer; font-size:14px; font-weight:600; padding:12px 0; list-style:none;
       display:flex; align-items:center; gap:8px; }
@@ -320,9 +320,6 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 .rr-lane .t{font-weight:700;color:var(--lane);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
 @media (max-width:720px){.rr-lanes{grid-template-columns:1fr}}
 .sechead .secnum{font-size:30px;line-height:1;color:var(--sec,var(--accent,#7c3aed));font-weight:700}
-/* The merged About & mechanism page centres its lede card at 980px; keep its
-   header on the same column so the page reads as one block. */
-#sec-rules .sechead{max-width:980px;margin-left:auto;margin-right:auto}
 .sechead h2{margin:0 0 4px;font-size:20px}
 .sechead p{margin:0;color:var(--muted);font-size:14px;max-width:70ch}
 </style>
