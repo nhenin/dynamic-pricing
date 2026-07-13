@@ -70,14 +70,14 @@
       font-weight:400; line-height:1.45; box-shadow:0 6px 20px rgba(0,0,0,.22); }
 
     /* intro / story */
-    details.intro { border:1px solid var(--border); border-radius:8px; background:var(--accent-soft);
+    details.intro { border:1px solid var(--border); border-radius:8px; background:var(--accent-soft); max-width:980px; margin-left:auto; margin-right:auto;
       padding:0 14px; margin-bottom:16px; }
     details.intro > summary { cursor:pointer; font-size:14px; font-weight:600; padding:12px 0; list-style:none;
       display:flex; align-items:center; gap:8px; }
     details.intro > summary::-webkit-details-marker { display:none; }
     details.intro > summary::before { content:"▸"; color:var(--urgent); transition:transform .15s; }
     details.intro[open] > summary::before { transform:rotate(90deg); }
-    details.intro .body { font-size:13px; padding:0 0 14px; max-width:80ch; }
+    details.intro .body { font-size:13.5px; padding:0 0 14px; line-height:1.6; }
     details.intro .lanes { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:10px 0 4px; }
     @media (max-width:720px){ details.intro .lanes{ grid-template-columns:1fr; } }
     .lane-card { border:1px solid var(--border); border-radius:7px; padding:10px 12px; background:var(--panel-bg); }
@@ -320,6 +320,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 .rr-lane .t{font-weight:700;color:var(--lane);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
 @media (max-width:720px){.rr-lanes{grid-template-columns:1fr}}
 .sechead .secnum{font-size:30px;line-height:1;color:var(--sec,var(--accent,#7c3aed));font-weight:700}
+/* The merged About & mechanism page centres its lede card at 980px; keep its
+   header on the same column so the page reads as one block. */
+#sec-rules .sechead{max-width:980px;margin-left:auto;margin-right:auto}
 .sechead h2{margin:0 0 4px;font-size:20px}
 .sechead p{margin:0;color:var(--muted);font-size:14px;max-width:70ch}
 </style>
@@ -349,11 +352,18 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 
   <!-- ===== SECTION NAV ===== -->
   <nav class="secnav" aria-label="sections">
-    <a href="#sec-about">About</a>
-    <a href="#sec-rules">⚙️ The mechanism</a>
     <a href="#sec-price">📊 Live</a>
+    <a href="#sec-rules">⚙️ About &amp; the mechanism</a>
     <a href="#sec-glossary">Glossary</a>
   </nav>
+
+
+  <!-- ===== THE RULES: all the theory, one place ===== -->
+  <div id="sec-rules" class="menu-hidden">
+    <div class="sechead" style="--sec:#7c3aed">
+      <div class="secnum">⚙️</div>
+      <div><h2>About &amp; the mechanism — the 60-second version first, then the rules</h2><p>Two ideas stacked on each other. First the base: <strong>Linear Leios</strong>, the consensus upgrade that gives every block round two bodies — a small instant one and a big certified one. Then what this prototype adds on top: <strong>dynamic pricing</strong>, a live per-byte price for each of those two lanes. These are the rules the dashboard obeys — a few examples pick up today&rsquo;s live quotes so they stay honest.</p></div>
+    </div>
 
   <details class="intro" id="sec-about" open>
     <summary>What am I looking at? — the 60-second version</summary>
@@ -377,18 +387,21 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           cheaper, for routine traffic that trades a short delay for a lower price.</p>
         </div>
       </div>
-      <p style="margin-bottom:0">Everything below is <strong>real data from a 3-node Cardano Dijkstra test network</strong>,
-      updating block by block. Any <span class="term" tabindex="0" data-def="Words with a dotted underline have a plain-language definition — hover them on desktop, or open the Glossary tab at the top on any device.">dotted word</span>
-      has a plain-language definition. Hover it on desktop, or open <em>Glossary</em> in the menu.</p>
+      <div class="lane-card" style="border-left:3px solid #7c3aed;margin:10px 0 4px">
+        <h3 class="tag" style="color:#7c3aed">💰 Where the money goes</h3>
+        <p>A sender's fee is a <span data-term="bid">bid</span> — a ceiling, not a price. The ledger charges the live
+        <span data-term="quote">quote</span> and splits it: the base fee stays in the <span data-term="fee pot">fee pot</span>
+        for the operators, the <span data-term="premium">premium</span> that congestion charged above it is donated to the
+        <strong>treasury</strong>, and the unused headroom is <span data-term="refund">refunded</span>. The 💰
+        <strong>Incentives</strong> panel shows those three pots measured from the running ledger, block by block.</p>
+      </div>
+      <p style="margin-bottom:0"><strong>Finding your way:</strong> 📊 <em>Live</em> is the running network —
+      real blocks from a <strong>3-node Cardano Dijkstra test network</strong>, a cockpit to drive the demand, and the
+      prices answering it. ⚙️ <em>The mechanism</em> is the rulebook, with examples that pick up today's live quotes.
+      Any <span class="term" tabindex="0" data-def="Words with a dotted underline have a plain-language definition — hover them on desktop, or open the Glossary tab at the top on any device.">dotted word</span>
+      has a plain-language definition — hover it, or open <em>Glossary</em> in the menu.</p>
     </div>
   </details>
-
-  <!-- ===== THE RULES: all the theory, one place ===== -->
-  <div id="sec-rules" class="menu-hidden">
-    <div class="sechead" style="--sec:#7c3aed">
-      <div class="secnum">⚙️</div>
-      <div><h2>The mechanism — the base layer first, then pricing on top</h2><p>Two ideas stacked on each other. First the base: <strong>Linear Leios</strong>, the consensus upgrade that gives every block round two bodies — a small instant one and a big certified one. Then what this prototype adds on top: <strong>dynamic pricing</strong>, a live per-byte price for each of those two lanes. These are the rules the dashboard obeys — a few examples pick up today&rsquo;s live quotes so they stay honest.</p></div>
-    </div>
 <details class="subsec rules-side" open>
   <summary><span class="subtag rules">The base</span> Linear Leios — every block round carries two blocks</summary>
 
@@ -589,9 +602,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       ran</strong> and republishes the price. That's the whole rule:</p>
     <div style="display:flex;flex-direction:column;gap:6px;margin:6px 0 2px;font-size:13.5px;line-height:1.6">
       <div>📈 Ran <strong>more than half-full</strong> → the price <strong style="color:var(--live)">rises</strong> —
-        the fuller it ran, the bigger the step, up to <strong>+25%</strong>.</div>
+        the fuller it ran, the bigger the step, up to <strong>+12.5%</strong>.</div>
       <div>📉 Ran <strong>less than half-full</strong> → the price <strong style="color:var(--good)">falls</strong> —
-        the emptier, the bigger the cut, down to <strong>−25%</strong>.</div>
+        the emptier, the bigger the cut, down to <strong>−12.5%</strong>.</div>
       <div>🧱 It never drops below the <strong>floor</strong>: 44 lovelace/byte.</div>
     </div>
     <div class="rr-scale">
@@ -599,11 +612,11 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       <div class="mid"></div>
       <div class="rr-live" id="rr-live-dot" style="left:50%;display:none"></div>
       <div class="rr-ticks">
-        <span><b>−25%</b>block ran empty</span>
+        <span><b>−12.5%</b>block ran empty</span>
         <span><b>−12.5%</b>¼ full</span>
         <span style="text-align:center"><b>0</b>half-full — on target</span>
         <span><b>+12.5%</b>¾ full</span>
-        <span style="text-align:right"><b>+25%</b>ran full</span>
+        <span style="text-align:right"><b>+12.5%</b>ran full</span>
       </div>
       <div class="rr-live-note" id="rr-live-note" style="display:none"></div>
     </div>
@@ -617,8 +630,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       <div class="rr-lane" style="--lane:var(--optimistic)">
         <div class="t">Optimistic · patient lane</div>
         Same rule against its own <strong>12,000,000-byte</strong> budget (~133× bigger) — but judged <strong>only
-        when one of its endorser blocks actually counts</strong> (its certificate landed). Full EB counted → +25%
-        steps that compound; light EB → −25%; <strong>no EB counted → the price holds</strong>. A full pool now
+        when one of its endorser blocks actually counts</strong> (its certificate landed). Full EB counted → +12.5%
+        steps that compound; light EB → −12.5%; <strong>no EB counted → the price holds</strong>. A full pool now
         climbs the staircase; a light trickle still decays to the floor.
       </div>
     </div>
@@ -644,16 +657,39 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         <math display="block" xmlns="http://www.w3.org/1998/Math/MathML" style="margin-top:4px">
           <mtext>step</mtext>
           <mo>=</mo>
-          <mfrac><mrow><mtext>fullness</mtext><mo>−</mo><mn>&#189;</mn></mrow><mn>2</mn></mfrac>
-          <mtext>&nbsp;&nbsp;cut off at ±25%</mtext>
+          <mfrac><mrow><mtext>fullness</mtext><mo>−</mo><mn>&#189;</mn></mrow><mn>4</mn></mfrac>
+          <mtext>&nbsp;&nbsp;cut off at ±12.5%</mtext>
         </math>
         <div class="legend-line" style="margin-top:8px">
           <b>fullness</b> = bytes the lane's block carried ÷ the lane's own byte budget · the ½ is the half-full
-          target · the ÷2 and the ±25% cut-off both come from the damping parameter <b>D&nbsp;=&nbsp;4</b> ·
+          target · the ÷4 and the ±12.5% cut-off both come from the damping parameter <b>D&nbsp;=&nbsp;8</b> ·
           <b>floor</b> = 44 lovelace/byte.
         </div>
       </div>
     </details>
+  </div>
+
+  <div class="panel">
+    <h2>The fee split <span style="font-weight:400;color:var(--muted)">— who receives what a sender pays</span></h2>
+    <p class="hint">A sender writes one number into their transaction: the <span data-term="bid">bid</span>. The ledger
+      charges the live <span data-term="quote">quote</span> and splits the bid three ways, conserving every lovelace —
+      <strong>base + premium + refund = bid</strong>:</p>
+    <div style="display:flex;flex-direction:column;gap:6px;margin:6px 0 2px;font-size:13.5px;line-height:1.6">
+      <div>🏗 <strong>Base</strong> — the protocol minimum fee — stays in the <span data-term="fee pot">fee pot</span>:
+        the floor every transaction contributes to the operators, however cheap its lane. At the epoch boundary the
+        treasury first takes its τ cut of the reward pot, and the rest pays the pools and their delegators.</div>
+      <div>🏛 <strong>Premium</strong> — quote − base, what congestion pricing charges <em>above</em> the minimum —
+        is donated to the <strong>treasury</strong>: scarcity revenue funds the commons instead of inflating one
+        block producer's luck.</div>
+      <div>↩️ <strong>Refund</strong> — bid − quote, the unused headroom — is credited back to the transaction's
+        <strong>refund account</strong> after the block. The bid is a ceiling, not a price.</div>
+    </div>
+    <p class="hint" style="margin-top:8px">The catch worth knowing: the split only runs for a transaction that <em>names</em>
+      a refund account (a registered staking account — this demo uses one of the devnet's genesis delegators). A transaction
+      without one pays its <strong>whole bid</strong> into the fee pot — no premium, no refund. And a refund owed to an
+      <em>unregistered</em> account parks in the pending pot forever: one of the open questions the prototype keeps on the table.</p>
+    <p class="hint">The 💰 <strong>Incentives</strong> panel in the Live section shows these pots measured from the
+      running ledger, block by block.</p>
   </div>
 
   </details>
@@ -834,6 +870,16 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 
     </details>
 
+  <details class="panel" id="pane-incentives" open>
+      <summary class="panehead"><h2>💰 Incentives — where the money goes <span style="font-weight:400;color:var(--muted)">— the ledger's own pots, measured each block</span></h2><span class="chev" aria-hidden="true">▾</span></summary>
+      <p class="hint" style="line-height:1.6">Every transaction pays its <span data-term="bid">bid</span> up front, and the ledger splits it three ways:
+      the base fee stays in the <span data-term="fee pot">fee pot</span>, the <span data-term="premium">premium</span> above it is donated to the treasury,
+      and the unused headroom flows back to the sender's account as a <span data-term="refund">refund</span>. These counters are read from the node's
+      ledger state once per block — measured pots, not a model.</p>
+      <div class="nowgrid" id="incgrid" style="grid-template-columns:auto 1fr 1fr 1fr"></div>
+      <div class="hint" id="inc-quant" style="line-height:1.6;margin-top:8px"></div>
+    </details>
+
   <details class="panel" id="pane-history" open>
     <summary class="panehead"><h2>History <span style="font-weight:400;color:var(--muted)">— quotes &amp; blocks, correlated, block by block</span></h2><span class="chev" aria-hidden="true">▾</span></summary>
     <!-- Chart controls live WITH the charts they drive, and stick to the top
@@ -938,10 +984,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   };
 
   // ---- the real controller (mirrors Cardano.Ledger.DynamicPricing.Controller) -
-  const CTRL = { target: 0.5, D: 4, floor: 44, multFloor: 3 };
+  const CTRL = { target: 0.5, D: 8, floor: 44, multFloor: 3 };
   function stepPrice(p, u){
     const signal = (u - CTRL.target) / (CTRL.target * CTRL.D);   // (u-½)/2
-    const move = Math.max(-1/CTRL.D, Math.min(1/CTRL.D, signal)); // clamp ±25%
+    const move = Math.max(-1/CTRL.D, Math.min(1/CTRL.D, signal)); // clamp ±1/D
     return Math.max(CTRL.floor, Math.round(p * (1 + move)));
   }
 
@@ -1210,7 +1256,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     host.append(
       laneHead(tok("--urgent"), "Urgent · fast lane", "— quote (₳/KB), queue (pale), and each block's fullness vs the ½ target below"),
       figU, ribU,
-      laneHead(tok("--optimistic"), "Optimistic · patient lane", "— its own scale: the floor and the ±25% steps are visible here"),
+      laneHead(tok("--optimistic"), "Optimistic · patient lane", "— its own scale: the floor and the ±12.5% steps are visible here"),
       figO, ribO);
     const cap = document.createElement("div");
     cap.className = "hint";
@@ -1235,8 +1281,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       why = "barely any demand last block — the quote is resting on its 44 lovelace/byte floor (can't go lower).";
     } else if (capped){
       why = dir === "up"
-        ? "the previous block was packed well past half-full, so the controller jumped the full +25% it's allowed in one step."
-        : "the previous block was nearly empty, so the controller cut the full −25% it's allowed in one step.";
+        ? "the previous block was packed well past half-full, so the controller jumped the full +12.5% it's allowed in one step."
+        : "the previous block was nearly empty, so the controller cut the full −12.5% it's allowed in one step.";
     } else {
       why = `the previous block ran ≈${Math.round(impliedU*100)}% full vs the 50% target, so the controller moved the quote ${dir==="up"?"up":"down"} ${Math.abs(move*100).toFixed(0)}% to steer it back.`;
     }
@@ -2946,7 +2992,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // scroll to them; scrollspy highlights the one on screen); About and Glossary
   // are standalone views that take over the screen.
   const STORY_SECTIONS = ["sec-price"];
-  const STANDALONE_VIEWS = ["sec-about", "sec-rules", "sec-glossary"];
+  const STANDALONE_VIEWS = ["sec-rules", "sec-glossary"];
   let standaloneMode = null;
   function setActivePill(id){
     for (const a of document.querySelectorAll(".secnav a"))
@@ -2989,7 +3035,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   }
   // The live content inside each section is always expanded.
   for (const d of document.querySelectorAll(".secbody details.subsec")) d.open = true;
-  const wanted = location.hash.slice(1) === "sec-ledger" ? "sec-price" : location.hash.slice(1);
+  const rawHash = location.hash.slice(1);
+  // Old deep links keep working: sec-ledger folded into Live long ago, and
+  // sec-about now opens the merged About & mechanism page.
+  const wanted = rawHash === "sec-ledger" ? "sec-price" : rawHash === "sec-about" ? "sec-rules" : rawHash;
   showSection([...STORY_SECTIONS, ...STANDALONE_VIEWS].includes(wanted) ? wanted : "sec-price");
 
   async function poll(){
@@ -3129,6 +3178,82 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   document.getElementById("s-txvalue").oninput = (e)=>{ txValue=parseFloat(e.target.value); document.getElementById("v-txvalue").textContent=e.target.value; txLifecycle(); };
   document.getElementById("s-txurg").oninput = (e)=>{ txUrg=parseFloat(e.target.value); document.getElementById("v-txurg").textContent=parseFloat(e.target.value).toFixed(2); txLifecycle(); };
 
+  // ---- incentives: the ledger's own fee-split pots, measured per block ------
+  // incentives.ndjson is written by incentives-poller.py: one record per block,
+  // cumulative lovelace read straight from the node's ledger state.
+  const adaPot = (l) => {
+    if (l == null) return "—";
+    const a = l / 1e6;
+    return "₳ " + (a >= 1000 ? Math.round(a).toLocaleString() : a >= 10 ? a.toFixed(1) : a.toFixed(2));
+  };
+  let incAll = [];
+  async function pollIncentives(){
+    if (paused) return;
+    try {
+      const res = await fetch("incentives.ndjson", {cache:"no-store"});
+      if (!res.ok) throw new Error("no pots stream");
+      const text = (await res.text()).trim();
+      const recs = [];
+      if (text) for (const l of text.split("\n")){
+        if (!l) continue;
+        try { recs.push(JSON.parse(l)); } catch (e) { /* torn tail */ }
+      }
+      incAll = recs;   // truncation (new run) simply rebaselines: shorter is fine
+    } catch (e) { /* standalone copy: keep whatever we had */ }
+    renderIncentives();
+  }
+  function renderIncentives(){
+    const grid = document.getElementById("incgrid"); if (!grid) return;
+    const setI = (id, html) => { const el = document.getElementById(id); if (el && el.innerHTML !== html) el.innerHTML = html; };
+    if (!incAll.length){
+      if (grid.dataset.built){ grid.dataset.built = ""; }
+      grid.innerHTML = `<div class="hint" style="grid-column:1/-1;margin:0">waiting for the first pots snapshot — the poller reads the ledger state once per block…</div>`;
+    } else {
+      const b = incAll[incAll.length-1], prev = incAll.length > 1 ? incAll[incAll.length-2] : null;
+      const delta = (k) => prev != null ? b[k] - prev[k] : null;
+      const plus  = (v) => v == null ? "" : `+${adaPot(v)} this block`;
+      const paid  = b.fees + b.donation + b.pendingRefunds + b.refundsDelivered;
+      const paidD = prev ? paid - (prev.fees + prev.donation + prev.pendingRefunds + prev.refundsDelivered) : null;
+      if (!grid.dataset.built){
+        grid.dataset.built = "1";
+        grid.innerHTML =
+          `<div class="nowblock"><div class="hint" style="margin:0">Σ senders paid</div>`+
+          `<div class="n" id="inc-paid"></div><div class="hint" style="margin:0" id="inc-paid-d"></div>`+
+          `<div class="hint" style="margin:0" id="inc-upto"></div></div>`+
+          `<div class="nowcard" style="--lane:#64748b"><div class="lane-tag">Fee pot · block producers</div>`+
+          `<div class="nowval"><span id="inc-fees"></span></div><div class="sub" id="inc-fees-d"></div>`+
+          `<div class="sub">every tx's base fee — plus the whole bid of any tx that names no refund account. At the epoch boundary the treasury takes its τ cut; the rest pays pools &amp; delegators.</div></div>`+
+          `<div class="nowcard" style="--lane:#7c3aed"><div class="lane-tag">Treasury · donated premiums</div>`+
+          `<div class="nowval"><span id="inc-don"></span></div><div class="sub" id="inc-don-d"></div>`+
+          `<div class="sub">quote − base of every refunding tx — what congestion charges above the minimum.</div></div>`+
+          `<div class="nowcard" style="--lane:#0ea5e9"><div class="lane-tag">Refunds · back to senders</div>`+
+          `<div class="nowval"><span id="inc-ref"></span></div><div class="sub" id="inc-ref-d"></div>`+
+          `<div class="sub" id="inc-ref-pending"></div></div>`;
+      }
+      setI("inc-paid", adaPot(paid));
+      setI("inc-paid-d", plus(paidD));
+      setI("inc-upto", `up to block <strong>#${b.i}</strong>`);
+      setI("inc-fees", adaPot(b.fees));           setI("inc-fees-d", plus(delta("fees")));
+      setI("inc-don", adaPot(b.donation));        setI("inc-don-d", plus(delta("donation")));
+      setI("inc-ref", adaPot(b.refundsDelivered)); setI("inc-ref-d", plus(delta("refundsDelivered")));
+      setI("inc-ref-pending", `credited to the refund account · ${adaPot(b.pendingRefunds)} still pending`);
+    }
+    // What a 1 KB transaction pays right now — derived from the newest block's
+    // published rates. The premium share is per byte, so it is exact.
+    const quant = document.getElementById("inc-quant");
+    const L = all.length ? all[all.length-1] : null;
+    if (quant && L && L.urgent != null){
+      const base = CTRL.floor;
+      const premKb = (r) => "₳ " + ((r - base) * REF_TX_BYTES / 1e6).toFixed(3);
+      const share  = (r) => r > 0 ? Math.round((r - base) / r * 100) : 0;
+      quant.innerHTML =
+        `<b>What a 1 KB transaction pays right now:</b> urgent <b>${adaKb(L.urgent)}</b>`+
+        ` — premium ${premKb(L.urgent)} (${share(L.urgent)}% of its per-byte cost) · `+
+        `optimistic <b>${adaKb(L.optimistic)}</b> — premium ${premKb(L.optimistic)} (${share(L.optimistic)}%).`+
+        ` The base — <b>${base} lovelace/byte</b> — is the fee pot's share; the premium is the treasury's.`;
+    }
+  }
+
   // ---- glossary (definitions verified against the mechanism docs) ------------
   const GLOSSARY = {
     "transaction":"A single payment or action sent to the network — the thing that travels in a lane, waits in the queue, and pays a fee.",
@@ -3142,12 +3267,15 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     "fee ceiling":"The most a sender authorises in their transaction's fee field. If the quote climbs above it while waiting, the transaction is evicted and must be resubmitted higher.",
     "utilisation":"How full a lane's block was — the fraction of its space actually used. Above the ½ target the price rises; below it the price falls.",
     "target":"The fullness the controller aims for: half-full blocks (½). It nudges the price up or down to keep utilisation near this point.",
-    "d":"A safety cap on price movement. With D = 4 the quote can change by at most ±25% per block — no wild swings, time for senders to react.",
+    "d":"A safety cap on price movement. With D = 8 the quote can change by at most ±12.5% per block — no wild swings, time for senders to react.",
     "discrimination floor":"Also called the fast-lane premium: the urgent quote always stays at least a set multiple of the optimistic quote, so the fast lane can never quietly become the cheap one. The multiple is a parameter of the mechanism, not a constant — this demo runs it at 3× (readable on screen); the design simulations used 16×.",
     "retained value":"What a transaction is still worth after its fee — and after the value it sheds while waiting. Senders pick the lane that retains the most.",
     "shedding":"When a sender decides not to send because neither lane keeps enough value at current prices. They walk away and try later, or not at all.",
     "reservation value":"A sender's private limit — the price above which they'd rather wait or skip than send now.",
     "fee buffer":"Extra headroom a sender bids above the current quote, so a rising price doesn't evict their transaction before it lands.",
+    "fee pot":"Where every transaction's base fee accumulates — plus the whole bid of any transaction that names no refund account. At the epoch boundary the treasury takes its τ cut and the remainder pays pools and delegators.",
+    "premium":"What congestion pricing charges above the protocol's base fee: quote − base. Under the fee split it is donated to the treasury rather than kept by the block producer.",
+    "refund":"The unused headroom of a bid: bid − quote, credited back to the transaction's refund account after inclusion. Only paid when the transaction names a registered refund account.",
     "lovelace":"The smallest unit of Cardano's currency, ADA. ₳ 1 = 1,000,000 lovelace. Quotes here are priced per byte of transaction.",
     "byte":"A unit of data size. A transaction's fee scales with how many bytes it takes up; most are a few thousand bytes (a few KB).",
     "test network":"An experimental copy of the blockchain, used to try new features safely before they reach the real network.",
@@ -3159,7 +3287,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       el.classList.add("term"); el.setAttribute("tabindex","0"); el.dataset.def = def;
     });
     const dl = document.getElementById("glossary-dl");
-    const titles = {transaction:"Transaction",forge:"Forge",lane:"Lane","rb":"RB · Ranking Block","eb":"EB · Endorser Block",quote:"Quote",bid:"Bid","fee ceiling":"Fee ceiling",utilisation:"Utilisation",target:"Target","d":"D (max change / block)","discrimination floor":"Fast-lane premium (a parameter — 3× here)","retained value":"Retained value",shedding:"Shedding / walk-away","reservation value":"Reservation value","fee buffer":"Fee buffer",lovelace:"Lovelace",byte:"Byte",["test network"]:"Test network"};
+    const titles = {transaction:"Transaction",forge:"Forge",lane:"Lane","rb":"RB · Ranking Block","eb":"EB · Endorser Block",quote:"Quote",bid:"Bid","fee ceiling":"Fee ceiling",utilisation:"Utilisation",target:"Target","d":"D (max change / block)","discrimination floor":"Fast-lane premium (a parameter — 3× here)","retained value":"Retained value",shedding:"Shedding / walk-away","reservation value":"Reservation value","fee buffer":"Fee buffer","fee pot":"Fee pot",premium:"Premium (quote − base)",refund:"Refund (bid − quote)",lovelace:"Lovelace",byte:"Byte",["test network"]:"Test network"};
     dl.innerHTML = Object.keys(GLOSSARY).map(k => `<dt>${titles[k]||k}</dt><dd>${GLOSSARY[k]}</dd>`).join("");
   }
 
@@ -3252,7 +3380,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       watch:"As fast as the node accepts, force-fed 50/50. Watch the queues balloon and backpressure throttle the senders — the mempool defends itself." },
     { name:"Ghost town", spec:"nobody sends · a stray tx every ~15 s",
       config:{...ACTOR_PRESETS["Balanced"]}, delayMs:15000, laneMix:null,
-      watch:"Demand stops. Watch both quotes ease back toward the floor (−25% a block), the queues drain, and blocks run near-empty — the mechanism at rest." },
+      watch:"Demand stops. Watch both quotes ease back toward the floor (−12.5% a block), the queues drain, and blocks run near-empty — the mechanism at rest." },
   ];
   function markScenario(name){
     [...document.querySelectorAll("#scenarios .scenario")].forEach(el => el.classList.toggle("active", el.dataset.name===name));
@@ -3283,8 +3411,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   document.getElementById("footnote").innerHTML =
     "Live 3-node Cardano Dijkstra test network · the price controller is a dynamic fee mechanism (like Ethereum's EIP-1559, "+
     "adapted for Cardano: it aims for half-full blocks against each lane's own byte budget — 90,112 B for the RB, 12 MB for the EB — "+
-    "moves at most ±25% per block and never below the 44 lovelace/byte floor) · an endorser block only issues at ≥ half a ranking block (else the lane pools) · "+
-    "fast-lane premium: a mechanism parameter, 3× on this demo (design sims used 16×) · ₳ 1 = 1,000,000 lovelace.";
+    "moves at most ±12.5% per block and never below the 44 lovelace/byte floor) · an endorser block only issues at ≥ half a ranking block (else the lane pools) · "+
+    "fast-lane premium: a mechanism parameter, 3× on this demo (the urgent lane opens at 16× the patient rate, as in the design sims) · "+
+    "every bid splits into base → fee pot, premium → treasury, headroom → refunded · ₳ 1 = 1,000,000 lovelace.";
 
   hydrateTerms();
   renderScenarios();
@@ -3308,8 +3437,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     }
   })();
 
-  poll(); pollActors(); pollEvictions(); pollMempoolLive();
-  setInterval(()=>{ poll(); pollActors(); pollEvictions(); }, 1200);
+  poll(); pollActors(); pollEvictions(); pollMempoolLive(); pollIncentives();
+  setInterval(()=>{ poll(); pollActors(); pollEvictions(); pollIncentives(); }, 1200);
   setInterval(pollMempoolLive, 250);   // 4 Hz: the Live section breathes faster than the block poll
   tickClock(); setInterval(tickClock, 1000);
   </script>
