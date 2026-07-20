@@ -50,18 +50,22 @@ swing      = (fullness − target) / (target × D)
   its price-signal headroom, not free space)
 - **floor** = 44 lovelace/byte · **D** = 16, so a step is at most ±6.25 % per
   block (the CIP's recommended calibration)
-- the urgent rate is always kept ≥ **3×** the optimistic one (a demo
-  calibration — the CIP adopts no such floor; see *How this maps to the CIP*)
+- the lanes are priced **independently** — no cross-lane floor, so the two
+  quotes may briefly cross (a permitted state; the urgent lane opens at 2×
+  the floor and earns its premium from demand, not from a rule)
 
 The rest of the mechanism, in the same spirit:
 
-- **Bids are caps, prices move.** A waiting transaction whose bid falls below
-  the climbing quote is **evicted** (re-checked O(1) at every new block); one
-  already below quote is refused at the door.
+- **Bids are caps, prices move.** Admission demands one worst-case controller
+  step of headroom (bid ≥ next-block quote), so a transaction that cannot
+  survive a single adverse update is refused at the door. A waiting
+  transaction whose bid falls below the climbing quote is **evicted**
+  (re-checked O(1) at every new block).
 - **Min-fill rule:** an endorser block is only issued when it carries at least
   **half a ranking block** (45,056 bytes) — below that the patient lane
-  *pools* for the next round. In the low-traffic case nothing is served later
-  than Praos-with-dynamic-pricing would serve it.
+  *pools* for the next round. One escape: after **10 rounds** without an
+  endorser-block announcement, a below-threshold block may issue anyway, so a
+  light trickle never pools forever.
 - **First-come conflicts:** if two transactions of different lanes want the
   same coin, the one admitted first keeps it — an admitted transaction is
   never displaced.
@@ -155,9 +159,8 @@ Everything is on the page, in plain language, but the short tour:
   votes are cast and counted by the prototype itself (that is what the
   Certification-miss scenario switches off). Everything else on screen —
   prices, queues, blocks, evictions — is the real ledger and the real mempool.
-- **Demo calibrations** — premium floor 3×, diffusion-time budget 15 s split
-  1/9 urgent / 8/9 patient, patient pool ~132 MB. All are parameters, not
-  constants.
+- **Demo calibrations** — diffusion-time budget 15 s split 1/9 urgent / 8/9
+  patient, patient pool ~132 MB. All are parameters, not constants.
 
 ## How this maps to the CIP
 
@@ -170,22 +173,18 @@ The CIP and this repo grew their own vocabularies. The mapping:
 | max fee | bid, fee cap |
 | EB announcement threshold | min-fill rule |
 
-The prototype predates parts of the CIP's recommended construction. The
-differences are calibration and scope, not mechanism:
+The prototype runs the CIP's recommended construction: target utilisation
+0.5, max-change denominator 16, no cross-lane floor (crossings permitted),
+urgent opening coefficient 2×, admission one worst-case controller step
+ahead, the 45,056-byte announcement threshold, and the K = 10 announcement
+age escape. Two simplifications remain:
 
-- **Cross-lane floor:** 3× here; the CIP adopts none. Its experiments
-  rejected fixed floors; temporary quote crossings are handled by a
-  max-of-two fee cap instead.
-- **Admission headroom:** admission at the current quote here; the CIP
-  requires the max fee to cover one controller step ahead.
-- **Age escape:** not implemented here; the CIP lets a producer announce a
-  below-threshold EB after K = 10 ranking blocks, so a trickle cannot
-  starve.
+- **Signal windows:** one sample per block here; the CIP smooths the urgent
+  signal over 5 samples and the standard one over 20 blocks.
 - **Premium scope:** lanes are disjoint here — urgent settles only in
   ranking blocks; the CIP's rb-only rule also lets an urgent transaction
-  settle through an EB at the standard quote.
-- **Certificates:** simplified here (see *What's real, what's simulated*);
-  the CIP assumes Leios certification as specified.
+  settle through an EB at the standard quote. And certificates are
+  simplified (see *What's real, what's simulated*).
 
-None of this touches what the prototype demonstrates: the lane rules, the
+Neither touches what the prototype demonstrates: the lane rules, the
 repricing and the settlement running in the real ledger and node.

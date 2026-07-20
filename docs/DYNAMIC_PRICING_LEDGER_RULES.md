@@ -54,7 +54,7 @@ Per-era instances: `NoPricing` (inert unit) for Shelley→Conway;
 `DynamicPricing` (published `InclusionPrices` + per-block `InclusionUsage`
 counters) for Dijkstra — activated by the Conway→Dijkstra translation with
 `initialPricingState` (`Optimistic` at today's `minFeeA` 44 lovelace/byte,
-`Urgent` at `priceDiscriminationFloor`, currently 3× — demo calibration, the sim used 16×). Pre-Dijkstra wire format only gains one constant byte.
+`Urgent` at 2× — the CIP's initial coefficient; no cross-lane floor since 2026-07-20). Pre-Dijkstra wire format only gains one constant byte.
 
 `feeRewards` (pending refunds) will live INSIDE `DynamicPricing` when the fee
 split lands (rule 3) — the family makes a second cross-era field unnecessary.
@@ -187,8 +187,10 @@ blockUsage' = ∅
 price' = price · (1 + clamp((u − target)/(target·D), −1/D, +1/D)),  floored at minFeeA
 ```
 
-with the ledger calibration `defaultControllerParams` = Will's sweep winner (`target = 1/2`,
-`D = 4` ⇒ at most ±25%/block; deterministic `Rational` arithmetic, lovelace rounded). The
+with the ledger calibration `defaultControllerParams` = the CIP's recommended construction
+(`target = 1/2`, `D = 16` ⇒ at most ±6.25%/block; deterministic `Rational` arithmetic, lovelace
+rounded). We ran `D = 4` (±25%) until 2026-07-13 and `D = 8` (±12.5%) until 2026-07-20 for a
+livelier demo staircase; both `8` and `16` sit inside the CIP's validated envelope. The
 utilisation signal is each lane's **own** fill against its **own** budget: `Urgent` ← urgent bytes
 / RB, `Optimistic` ← optimistic bytes / `optimisticBlockCapacity` (spec-aligned: Polina's
 `regCap` = the per-EB cap). At realistic traffic the optimistic fill sits far below its target,
@@ -198,7 +200,9 @@ price tracks optimistic demand alone. After both lanes step,
 the cross-lane invariant is re-imposed structurally via `mkInclusionPrices`:
 
 ```
-urgent prices' ≥ priceDiscriminationFloor × optimistic prices'   (floor = 16)
+no cross-lane constraint — the lanes publish independently and may briefly cross
+(the discrimination floor was removed 2026-07-20 to match the CIP; its experiments
+rejected fixed floors)
 ```
 
 Still deferred to calibration / the weekly: making `optimisticBlockCapacity` a protocol
@@ -246,8 +250,8 @@ rule (and the mempool) judge the transactions of block *N+1* against.
 3. **Fee pot starvation.** Under the split, the fee pot receives nothing from refunding
    txs — what is the long-term SPO incentive story?
 4. **The `reprice` formula.** ~~`updateTiers = id`.~~ **IMPLEMENTED (2026-06-17):** Will's
-   per-lane EIP-1559 controller (`stepPrice`), calibrated to his sweep winner (`target = 1/2`,
-   `D = 4`). **UPDATED (2026-06-25):** the optimistic lane prices on its **own fill**, so an
+   per-lane EIP-1559 controller (`stepPrice`), calibrated to the CIP's recommendation (`target = 1/2`,
+   `D = 16` since 2026-07-20). **UPDATED (2026-06-25):** the optimistic lane prices on its **own fill**, so an
    urgent flood no longer moves the optimistic price — two genuinely dynamic, independent lanes.
    **UPDATED (2026-07-06):** the optimistic budget is now the real mainnet EB capacity
    (`optimisticBlockCapacity` = 12 MB, the CIP-164 closure-size limit) for BOTH the pricing
@@ -290,14 +294,14 @@ lane must only move on a reprice that carries ITS OWN transport's bytes:
   bytes); it steps only when its endorser block counts (Giorgos's rule).
 
 Without the urgent half, every certification was read as "the urgent lane ran
-empty" and dropped the urgent price 25% between full blocks — the sawtooth seen
+empty" and dropped the urgent price a full step between full blocks — the sawtooth seen
 under saturation, the exact mirror of the optimistic ping-pong. With both halves,
 each lane climbs a clean staircase under a full pool.
 
 The urgent lane is judged every block (a regular block comes every round — an empty one really
 means an idle lane). The optimistic lane is judged **only when one of its endorser blocks
 actually counts in the block** (its certificate landed and its bytes applied): full EB counted
-→ +25% steps that COMPOUND; light EB counted → −25%; **no EB counted → the price holds**.
+→ full upward steps that COMPOUND; light EB counted → a downward step; **no EB counted → the price holds**.
 Rationale, measured live: certification pacing leaves most rounds with no optimistic block to
 judge, and treating those as "the lane ran empty" made the price ping-pong floor ↔ floor×1.25
 while the pool sat completely full — the price never rationed the overload. With

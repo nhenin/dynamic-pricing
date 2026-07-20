@@ -696,10 +696,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         climbs the staircase; a light trickle still decays to the floor.
       </div>
     </div>
-    <p class="hint" style="margin-top:12px">One last guard, after both lanes update: the urgent price is kept at least
-      <strong>3×</strong> the optimistic one — the <em>fast-lane premium</em>, a parameter of the mechanism (this demo
-      runs 3× so the gap stays readable; the design simulations used 16×). The fast lane never quietly becomes the
-      cheap one.</p>
+    <p class="hint" style="margin-top:12px">And that is the whole rule: the two lanes are priced
+      <strong>independently</strong> — no cross-lane floor. The urgent quote can even dip below the optimistic one for
+      a round or two (a permitted state, not a bug); the experiments rejected fixed floors because they overprice the
+      fast lane exactly when capacity is slack.</p>
     <details style="margin-top:10px">
       <summary class="hint" style="cursor:pointer;margin:0">The exact formula, for the mathematically inclined</summary>
       <div class="eq-formula" style="margin-top:8px">
@@ -964,8 +964,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     </div>
     <p class="hint">Each lane's <span data-term="quote">quote</span> climbs while its blocks fill and eases back as they
       drain — and the two lines are <em>meant</em> to look different: the urgent quote does the moving, while the
-      optimistic one rests at the floor unless something fills a meaningful share of its 12&nbsp;MB block. The <span data-term="discrimination floor">fast-lane premium</span> (a mechanism parameter — 3× on this
-      demo) keeps the fast lane at least that much dearer than the patient lane. The block bars show <strong>% of each
+      optimistic one rests at the floor unless something fills a meaningful share of its 12&nbsp;MB block. The lanes are
+      priced <span data-term="discrimination floor">independently</span> — no cross-lane floor — so brief quote
+      crossings are possible and permitted. The block bars show <strong>% of each
       lane's byte budget</strong> — the true fullness (capacity is bytes, and a handful of fat scenario txs can fill a
       block that would look empty in tx counts). The dashed line is the controller's half-full target. Prices are shown in <strong>₳ for a 1-KB transaction</strong>
       (the ledger's native unit is <span data-term="lovelace">lovelace</span> per <span data-term="byte">byte</span> —
@@ -1048,9 +1049,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   };
 
   // ---- the real controller (mirrors Cardano.Ledger.DynamicPricing.Controller) -
-  const CTRL = { target: 0.5, D: 8, floor: 44, multFloor: 3 };
+  const CTRL = { target: 0.5, D: 16, floor: 44 };
   function stepPrice(p, u){
-    const signal = (u - CTRL.target) / (CTRL.target * CTRL.D);   // (u-½)/2
+    const signal = (u - CTRL.target) / (CTRL.target * CTRL.D);   // (u-½)/8
     const move = Math.max(-1/CTRL.D, Math.min(1/CTRL.D, signal)); // clamp ±1/D
     return Math.max(CTRL.floor, Math.round(p * (1 + move)));
   }
@@ -1069,7 +1070,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       .23,.22,.20,.20,.22,.20,.20,.20,           // calm again
     ];
     const UO = U.map(u => 0.25 + 0.35 * u);      // optimistic lane is less stressed
-    let pu = 132, po = 44;                         // start: urgent at 3×floor, optimistic at floor
+    let pu = 88, po = 44;                          // start: urgent at 2× the floor (its opening coefficient), optimistic at the floor
     const blocks = [], rawU = [], rawP = [];
     for (let i = 0; i < U.length; i++){
       const qu = Math.round(1100 * Math.max(0, U[i] - 0.4));
@@ -1079,13 +1080,12 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       rawU.push(U[i]); rawP.push(pu);
       pu = stepPrice(pu, U[i]);
       po = stepPrice(po, UO[i]);
-      pu = Math.max(pu, CTRL.multFloor * po);     // discrimination floor
     }
     // actor buckets: demand sheds as the urgent quote climbs (price-elastic).
     const peak = Math.max(...blocks.map(b => b.urgent));
-    const span = Math.max(1, peak - 704);
+    const span = Math.max(1, peak - 88);
     const actors = blocks.map(b => {
-      const heat = Math.max(0, Math.min(1, (b.urgent - 704) / span));
+      const heat = Math.max(0, Math.min(1, (b.urgent - 88) / span));
       const shedFrac = 0.55 * heat;
       const served = 120 * (1 - shedFrac);
       const urgentFrac = Math.max(0.10, 0.45 - 0.30 * heat);
@@ -1139,7 +1139,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     kpisEl.innerHTML = [
       kpi("Urgent quote now", now.urgent.toLocaleString(), tok("--urgent"), feePerKb(now.urgent)+" per 1 KB tx"),
       kpi("Optimistic quote now", now.optimistic.toLocaleString(), tok("--optimistic"), feePerKb(now.optimistic)+" per 1 KB tx"),
-      kpi("Fast-lane premium", minRatio.toFixed(0) + "× — held", tok("--good"), "urgent ÷ optimistic · floor is 3×"),
+      kpi("Fast-lane premium", minRatio.toFixed(1) + "×", tok("--good"), "urgent ÷ optimistic · no floor — crossings permitted"),
       kpi("Demand served", served, tok("--good"), pricedOut || "share routed to a lane"),
       kpi("Transactions / block", (now.rb+now.eb).toLocaleString(), tok("--eb"), "RB "+now.rb+" · EB "+now.eb),
       kpi("Blocks observed", all.length.toLocaleString(), tok("--muted"), mode==="static"?"replay of a captured run":"live · node1"),
@@ -1361,10 +1361,6 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const badge = (x)=> x.dir==="up" ? `<span class="badge up">▲ +${(x.move*100).toFixed(0)}%</span>`
                       : x.dir==="down" ? `<span class="badge down">▼ ${(x.move*100).toFixed(0)}%</span>`
                       : `<span class="badge flat">→ held</span>`;
-    const floorBinding = b.urgent <= CTRL.multFloor * b.optimistic + 1;
-    // When pinned to the ×3 floor the urgent quote tracks the optimistic lane,
-    // not its own fullness — so the "% full" reading would mislead.
-    if (floorBinding) e.why = "the urgent quote is resting on the fast-lane premium floor (3× the optimistic quote on this demo — a tunable parameter), so for now it tracks that lane rather than its own fullness.";
     host.innerHTML =
       `<div class="row">${badge(e)}`+
         `<span class="move" style="color:var(--urgent)">urgent ${a.urgent.toLocaleString()} → ${b.urgent.toLocaleString()}</span>`+
@@ -3340,7 +3336,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     "utilisation":"How full a lane's block was — the fraction of its space actually used. Above the ½ target the price rises; below it the price falls.",
     "target":"The fullness the controller aims for: half-full blocks (½). It nudges the price up or down to keep utilisation near this point.",
     "d":"A safety cap on price movement. With D = 16 the quote can change by at most ±6.25% per block — no wild swings, time for senders to react.",
-    "discrimination floor":"Also called the fast-lane premium: the urgent quote always stays at least a set multiple of the optimistic quote, so the fast lane can never quietly become the cheap one. The multiple is a parameter of the mechanism, not a constant — this demo runs it at 3× (readable on screen); the design simulations used 16×.",
+    "discrimination floor":"There is none: the two lanes are priced independently, and the urgent quote may briefly dip below the optimistic one (a permitted controller state). Fixed cross-lane floors were tested at 3× and 16× and rejected — they overprice the fast lane exactly when capacity is slack. Earlier demo builds ran a 3× floor; this one matches the CIP.",
     "retained value":"What a transaction is still worth after its fee — and after the value it sheds while waiting. Senders pick the lane that retains the most.",
     "shedding":"When a sender decides not to send because neither lane keeps enough value at current prices. They walk away and try later, or not at all.",
     "reservation value":"A sender's private limit — the price above which they'd rather wait or skip than send now.",
@@ -3359,7 +3355,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       el.classList.add("term"); el.setAttribute("tabindex","0"); el.dataset.def = def;
     });
     const dl = document.getElementById("glossary-dl");
-    const titles = {transaction:"Transaction",forge:"Forge",lane:"Lane","rb":"RB · Ranking Block","eb":"EB · Endorser Block",quote:"Quote",bid:"Bid","fee ceiling":"Fee ceiling",utilisation:"Utilisation",target:"Target","d":"D (max change / block)","discrimination floor":"Fast-lane premium (a parameter — 3× here)","retained value":"Retained value",shedding:"Shedding / walk-away","reservation value":"Reservation value","fee buffer":"Fee buffer","fee pot":"Fee pot",premium:"Premium (quote − base)",refund:"Refund (bid − quote)",lovelace:"Lovelace",byte:"Byte",["test network"]:"Test network"};
+    const titles = {transaction:"Transaction",forge:"Forge",lane:"Lane","rb":"RB · Ranking Block","eb":"EB · Endorser Block",quote:"Quote",bid:"Bid","fee ceiling":"Fee ceiling",utilisation:"Utilisation",target:"Target","d":"D (max change / block)","discrimination floor":"Fast-lane premium (urgent ÷ optimistic — no floor)","retained value":"Retained value",shedding:"Shedding / walk-away","reservation value":"Reservation value","fee buffer":"Fee buffer","fee pot":"Fee pot",premium:"Premium (quote − base)",refund:"Refund (bid − quote)",lovelace:"Lovelace",byte:"Byte",["test network"]:"Test network"};
     dl.innerHTML = Object.keys(GLOSSARY).map(k => `<dt>${titles[k]||k}</dt><dd>${GLOSSARY[k]}</dd>`).join("");
   }
 
@@ -3437,7 +3433,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       watch:"Heavy traffic of price-sensitive senders. As the urgent quote climbs they shift to the patient lane or walk away — elasticity, live." },
     { name:"Lazy Sunday", spec:"~10 tx/s · ~90% optimistic (their choice)",
       config:{...ACTOR_PRESETS["Patient crowd"]}, delayMs:100, laneMix:null,
-      watch:"Nearly everyone rides the cheap patient lane. The urgent lane empties — but its quote never drops below the fast-lane premium (a parameter, 3× on this demo). The floor is structural." },
+      watch:"Nearly everyone rides the cheap patient lane. The urgent lane empties and its quote decays toward the 44 lovelace/byte floor — no cross-lane floor holds it up; the lanes can even cross." },
     { name:"Bulk night", spec:"~50 tx/s · 85% optimistic (forced)",
       config:{...ACTOR_PRESETS["Balanced"]}, delayMs:20, laneMix:0.85,
       watch:"The scenario forces 85% of txs onto the patient lane. Watch the endorser blocks fill to the brim — certification becomes the pace-setter. (Combine with ⚡ Certification miss to freeze it.)" },
@@ -3484,7 +3480,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     "Live 3-node Cardano Dijkstra test network · the price controller is a dynamic fee mechanism (like Ethereum's EIP-1559, "+
     "adapted for Cardano: it aims for half-full blocks against each lane's own byte budget — 90,112 B for the RB, 12 MB for the EB — "+
     "moves at most ±6.25% per block and never below the 44 lovelace/byte floor) · an endorser block only issues at ≥ half a ranking block (else the lane pools) · "+
-    "fast-lane premium: a mechanism parameter, 3× on this demo (the urgent lane opens at 16× the patient rate, as in the design sims) · "+
+    "no cross-lane floor: the lanes are priced independently and may briefly cross (the urgent lane opens at 2× the patient rate) · "+
     "every bid splits into base → fee pot, premium → treasury, headroom → refunded · ₳ 1 = 1,000,000 lovelace.";
 
   hydrateTerms();
