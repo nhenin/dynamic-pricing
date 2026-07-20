@@ -39,9 +39,9 @@ swing      = clamp( (fullness − target) / 2 , ± max step )
 - **fullness** = bytes the lane's block carried ÷ the lane's *own* byte budget
 - **target** = ½ (the controller aims for half-full blocks — the other half is
   its price-signal headroom, not free space)
-- **floor** = 44 lovelace/byte · **max step** = ±25 % per block (damping D = 4)
-- the urgent rate is always kept ≥ **3×** the optimistic one (the *fast-lane
-  premium* — a mechanism parameter; the design simulations used 16×)
+- **floor** = 44 lovelace/byte · **max step** = ±12.5 % per block (damping D = 8)
+- the urgent rate is always kept ≥ **3×** the optimistic one (a demo
+  calibration — the CIP adopts no such floor; see *How this maps to the CIP*)
 
 The rest of the mechanism, in the same spirit:
 
@@ -145,15 +145,48 @@ Everything is on the page, in plain language, but the short tour:
   votes are cast and counted by the prototype itself (that is what the
   Certification-miss scenario switches off). Everything else on screen —
   prices, queues, blocks, evictions — is the real ledger and the real mempool.
-- **Demo calibrations** — premium 3× (design sims: 16×), diffusion-time budget
-  15 s split 1/9 urgent / 8/9 patient, patient pool ~132 MB. All are
-  parameters, not constants.
+- **Demo calibrations** — premium floor 3×, diffusion-time budget 15 s split
+  1/9 urgent / 8/9 patient, patient pool ~132 MB. All are parameters, not
+  constants.
+
+## How this maps to the CIP
+
+This prototype backs the [Transaction Urgency Signalling CIP](https://github.com/input-output-hk/tiered-pricing/blob/main/docs/phase-2/CIP-urgency-signalling/README.md).
+The CIP and this repo grew their own vocabularies. The mapping:
+
+| The CIP says | This repo says |
+|---|---|
+| standard lane | optimistic / patient lane |
+| max fee | bid, fee cap |
+| EB announcement threshold | min-fill rule |
+
+The prototype predates parts of the CIP's recommended construction. The
+differences are calibration and scope, not mechanism:
+
+- **Damping:** D = 8 here (±12.5 %/block); the CIP recommends D = 16
+  (±6.25 %). Both sit inside the CIP's validated 8–16 envelope.
+- **Cross-lane floor:** 3× here; the CIP adopts none. Its experiments
+  rejected fixed floors; temporary quote crossings are handled by a
+  max-of-two fee cap instead.
+- **Admission headroom:** admission at the current quote here; the CIP
+  requires the max fee to cover one controller step ahead.
+- **Age escape:** not implemented here; the CIP lets a producer announce a
+  below-threshold EB after K = 10 ranking blocks, so a trickle cannot
+  starve.
+- **Premium scope:** lanes are disjoint here — urgent settles only in
+  ranking blocks; the CIP's rb-only rule also lets an urgent transaction
+  settle through an EB at the standard quote.
+- **Certificates:** simplified here (see *Honest status*); the CIP assumes
+  Leios certification as specified.
+
+None of this touches what the prototype demonstrates: the lane rules, the
+repricing and the settlement running in the real ledger and node.
 
 ## Open questions (tracked for the weekly)
 
 - **Min-fill aging:** a pure ≥ |RB|/2 threshold can starve a trickle (a few
-  pooled transactions below the bar never forge). The rule likely needs an
-  escape — issue anyway after K rounds held.
+  pooled transactions below the bar never forge). The CIP settles this with
+  an age escape at K = 10 ranking blocks; not implemented here yet.
 - **Min-fill denominator:** half the *RB* budget (implemented, CIP framing) or
   half the EB's own budget?
 - **Cross-lane validation order:** ours is first-come across lanes; the formal
