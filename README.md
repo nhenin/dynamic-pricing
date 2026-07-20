@@ -1,7 +1,3 @@
-
-
-https://github.com/user-attachments/assets/7f8f70f7-006c-452a-9086-6101a52c7d63
-
 # Two-lane dynamic pricing on Cardano — prototype & live demo
 
 A working prototype of **dynamic, two-lane transaction pricing** for Cardano
@@ -18,9 +14,12 @@ git submodule update --init --recursive
 
 ## The walkthrough (8 min)
 
-**[▶ Watch the demo](demo/demo-walkthrough.mp4)** — the two lanes live on
-the devnet: rush hour, a price squeeze with real evictions, the measured
-pots, a certification miss and its heal, the quiet end. Captions included.
+https://github.com/user-attachments/assets/7f8f70f7-006c-452a-9086-6101a52c7d63
+
+The two lanes live on the devnet: rush hour, a price squeeze with real
+evictions, the measured pots, a certification miss and its heal, the quiet
+end. Captions included. The file also ships in the repo:
+[demo/demo-walkthrough.mp4](demo/demo-walkthrough.mp4).
 
 ## The idea in one minute
 
@@ -91,7 +90,7 @@ comments) of the `nicolas/dynamic-pricing` branch versus its upstream base.
 | [`cardano-cli`](https://github.com/nhenin/cardano-cli-dp) (submodule) | Dijkstra tx-body CLI support | [diff](https://github.com/nhenin/cardano-cli-dp/compare/leios-prototype...nicolas/dynamic-pricing) |
 | [`ouroboros-leios`](https://github.com/nhenin/ouroboros-leios-dp) (submodule) | The 3-node proto-devnet, the run supervisor, the trace tailer and the demo web server | [diff](https://github.com/nhenin/ouroboros-leios-dp/compare/main...nicolas/dynamic-pricing) |
 | [`demo/index.html`](demo/index.html) | The dashboard (a single self-contained page) | — |
-| [`docs/`](docs/) | Design docs + the latest team-sync notes ([docs/TEAM_SYNC_2026-07-06.md](docs/TEAM_SYNC_2026-07-06.md)) | — |
+| [`docs/`](docs/) | The design docs: ledger rules, two-lane mempool, lifecycle diagram | — |
 
 ## Running the demo
 
@@ -145,11 +144,11 @@ Everything is on the page, in plain language, but the short tour:
   one lane's waiting transactions (no restart), or reboot the whole network
   to a fresh chain from the page.
 
-## Honest status
+## What's real, what's simulated
 
-- **Ledger** — the five rules + controller: done, `-Werror`, unit-tested.
+- **Ledger** — the five rules + the controller, `-Werror`-clean, unit-tested.
 - **Mempool** — per-lane admission, O(1) urgent ingress (measured 446 tx/s),
-  exact eviction-on-price-rise (traced per transaction), min-fill rule: done,
+  exact eviction-on-price-rise (traced per transaction), the min-fill rule —
   all verified on the live network.
 - **Simulated piece** — the endorser-block *certificate*: the committee's
   votes are cast and counted by the prototype itself (that is what the
@@ -186,21 +185,8 @@ differences are calibration and scope, not mechanism:
 - **Premium scope:** lanes are disjoint here — urgent settles only in
   ranking blocks; the CIP's rb-only rule also lets an urgent transaction
   settle through an EB at the standard quote.
-- **Certificates:** simplified here (see *Honest status*); the CIP assumes
-  Leios certification as specified.
+- **Certificates:** simplified here (see *What's real, what's simulated*);
+  the CIP assumes Leios certification as specified.
 
 None of this touches what the prototype demonstrates: the lane rules, the
 repricing and the settlement running in the real ledger and node.
-
-## Open questions (tracked for the weekly)
-
-- **Min-fill aging:** a pure ≥ |RB|/2 threshold can starve a trickle (a few
-  pooled transactions below the bar never forge). The CIP settles this with
-  an age escape at K = 10 ranking blocks; not implemented here yet.
-- **Min-fill denominator:** half the *RB* budget (implemented, CIP framing) or
-  half the EB's own budget?
-- **Cross-lane validation order:** ours is first-come across lanes; the formal
-  spec sequences priority first. Different outcomes exactly on cross-lane
-  conflicts.
-- **Per-lane diffusion-time budgets:** the right calibration, and whether the
-  urgent window should be a protocol-visible bound.
