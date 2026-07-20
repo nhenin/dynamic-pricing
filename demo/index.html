@@ -663,9 +663,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       ran</strong> and republishes the price. That's the whole rule:</p>
     <div style="display:flex;flex-direction:column;gap:6px;margin:6px 0 2px;font-size:13.5px;line-height:1.6">
       <div>📈 Ran <strong>more than half-full</strong> → the price <strong style="color:var(--live)">rises</strong> —
-        the fuller it ran, the bigger the step, up to <strong>+12.5%</strong>.</div>
+        the fuller it ran, the bigger the step, up to <strong>+6.25%</strong>.</div>
       <div>📉 Ran <strong>less than half-full</strong> → the price <strong style="color:var(--good)">falls</strong> —
-        the emptier, the bigger the cut, down to <strong>−12.5%</strong>.</div>
+        the emptier, the bigger the cut, down to <strong>−6.25%</strong>.</div>
       <div>🧱 It never drops below the <strong>floor</strong>: 44 lovelace/byte.</div>
     </div>
     <div class="rr-scale">
@@ -673,11 +673,11 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       <div class="mid"></div>
       <div class="rr-live" id="rr-live-dot" style="left:50%;display:none"></div>
       <div class="rr-ticks">
-        <span><b>−12.5%</b>block ran empty</span>
-        <span><b>−12.5%</b>¼ full</span>
+        <span><b>−6.25%</b>block ran empty</span>
+        <span><b>−3.1%</b>¼ full</span>
         <span style="text-align:center"><b>0</b>half-full — on target</span>
-        <span><b>+12.5%</b>¾ full</span>
-        <span style="text-align:right"><b>+12.5%</b>ran full</span>
+        <span><b>+3.1%</b>¾ full</span>
+        <span style="text-align:right"><b>+6.25%</b>ran full</span>
       </div>
       <div class="rr-live-note" id="rr-live-note" style="display:none"></div>
     </div>
@@ -691,8 +691,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       <div class="rr-lane" style="--lane:var(--optimistic)">
         <div class="t">Optimistic · patient lane</div>
         Same rule against its own <strong>12,000,000-byte</strong> budget (~133× bigger) — but judged <strong>only
-        when one of its endorser blocks actually counts</strong> (its certificate landed). Full EB counted → +12.5%
-        steps that compound; light EB → −12.5%; <strong>no EB counted → the price holds</strong>. A full pool now
+        when one of its endorser blocks actually counts</strong> (its certificate landed). Full EB counted → +6.25%
+        steps that compound; light EB → −6.25%; <strong>no EB counted → the price holds</strong>. A full pool now
         climbs the staircase; a light trickle still decays to the floor.
       </div>
     </div>
@@ -718,12 +718,12 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         <math display="block" xmlns="http://www.w3.org/1998/Math/MathML" style="margin-top:4px">
           <mtext>step</mtext>
           <mo>=</mo>
-          <mfrac><mrow><mtext>fullness</mtext><mo>−</mo><mn>&#189;</mn></mrow><mn>4</mn></mfrac>
-          <mtext>&nbsp;&nbsp;cut off at ±12.5%</mtext>
+          <mfrac><mrow><mtext>fullness</mtext><mo>−</mo><mn>&#189;</mn></mrow><mn>8</mn></mfrac>
+          <mtext>&nbsp;&nbsp;cut off at ±6.25%</mtext>
         </math>
         <div class="legend-line" style="margin-top:8px">
           <b>fullness</b> = bytes the lane's block carried ÷ the lane's own byte budget · the ½ is the half-full
-          target · the ÷4 and the ±12.5% cut-off both come from the damping parameter <b>D&nbsp;=&nbsp;8</b> ·
+          target · the ÷8 and the ±6.25% cut-off both come from the damping parameter <b>D&nbsp;=&nbsp;16</b> ·
           <b>floor</b> = 44 lovelace/byte.
         </div>
       </div>
@@ -764,13 +764,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     <summary>How this demo is driven — what's real, what's simulated</summary>
     <div class="body">
       <p class="hint" id="run-config-live" style="display:none; margin-top:0"></p>
-      <p style="margin-top:0"><strong>The prices are real.</strong> Three real Cardano Dijkstra nodes forge real blocks and
-      run the real ledger pricing controller. Every quote, queue depth and block you see comes straight from the nodes.
-      The one simulated piece is the endorser-block <em>certificate</em>: the committee's votes are cast and counted by
-      the prototype itself (that is what the Certification-miss scenario switches off).</p>
-      <p><strong>The network is real too</strong> — three equal pools forging real blocks (see <em>The base — Linear
-      Leios</em> above for who forges, who votes and how a tx spreads).</p>
-      <p><strong>The demand is simulated.</strong> Rather than wait for real users, a load generator feeds the network through node1 with
+      <p style="margin-top:0"><strong>The system under test is live.</strong> Three Cardano Dijkstra nodes run Linear Leios,
+      forge the protocol's blocks and pool votes, and execute the ledger pricing controller. Every quote, queue depth,
+      block and trace shown here comes from that running three-pool network.</p>
+      <p><strong>The demand is generated synthetically.</strong> Rather than wait for real users, a load generator feeds the network through node1 with
       a synthetic stream of payments (the other two nodes pull them from there). This run uses the <strong>actor</strong> mode: for each payment it samples a
       <em>value</em> and an <em>urgency</em>, reads the two live quotes, and picks the lane that keeps more value after the fee
       — <span style="color:var(--urgent)">urgent</span> if speed is worth it,
@@ -1323,7 +1320,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     host.append(
       laneHead(tok("--urgent"), "Urgent · fast lane", "— quote (₳/KB), queue (pale), and each block's fullness vs the ½ target below"),
       figU, ribU,
-      laneHead(tok("--optimistic"), "Optimistic · patient lane", "— its own scale: the floor and the ±12.5% steps are visible here"),
+      laneHead(tok("--optimistic"), "Optimistic · patient lane", "— its own scale: the floor and the ±6.25% steps are visible here"),
       figO, ribO);
     const cap = document.createElement("div");
     cap.className = "hint";
@@ -1348,8 +1345,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       why = "barely any demand last block — the quote is resting on its 44 lovelace/byte floor (can't go lower).";
     } else if (capped){
       why = dir === "up"
-        ? "the previous block was packed well past half-full, so the controller jumped the full +12.5% it's allowed in one step."
-        : "the previous block was nearly empty, so the controller cut the full −12.5% it's allowed in one step.";
+        ? "the previous block was packed well past half-full, so the controller jumped the full +6.25% it's allowed in one step."
+        : "the previous block was nearly empty, so the controller cut the full −6.25% it's allowed in one step.";
     } else {
       why = `the previous block ran ≈${Math.round(impliedU*100)}% full vs the 50% target, so the controller moved the quote ${dir==="up"?"up":"down"} ${Math.abs(move*100).toFixed(0)}% to steer it back.`;
     }
@@ -3342,7 +3339,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     "fee ceiling":"The most a sender authorises in their transaction's fee field. If the quote climbs above it while waiting, the transaction is evicted and must be resubmitted higher.",
     "utilisation":"How full a lane's block was — the fraction of its space actually used. Above the ½ target the price rises; below it the price falls.",
     "target":"The fullness the controller aims for: half-full blocks (½). It nudges the price up or down to keep utilisation near this point.",
-    "d":"A safety cap on price movement. With D = 8 the quote can change by at most ±12.5% per block — no wild swings, time for senders to react.",
+    "d":"A safety cap on price movement. With D = 16 the quote can change by at most ±6.25% per block — no wild swings, time for senders to react.",
     "discrimination floor":"Also called the fast-lane premium: the urgent quote always stays at least a set multiple of the optimistic quote, so the fast lane can never quietly become the cheap one. The multiple is a parameter of the mechanism, not a constant — this demo runs it at 3× (readable on screen); the design simulations used 16×.",
     "retained value":"What a transaction is still worth after its fee — and after the value it sheds while waiting. Senders pick the lane that retains the most.",
     "shedding":"When a sender decides not to send because neither lane keeps enough value at current prices. They walk away and try later, or not at all.",
@@ -3455,7 +3452,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       watch:"As fast as the node accepts, force-fed 50/50. Watch the queues balloon and backpressure throttle the senders — the mempool defends itself." },
     { name:"Ghost town", spec:"nobody sends · a stray tx every ~15 s",
       config:{...ACTOR_PRESETS["Balanced"]}, delayMs:15000, laneMix:null,
-      watch:"Demand stops. Watch both quotes ease back toward the floor (−12.5% a block), the queues drain, and blocks run near-empty — the mechanism at rest." },
+      watch:"Demand stops. Watch both quotes ease back toward the floor (−6.25% a block), the queues drain, and blocks run near-empty — the mechanism at rest." },
   ];
   function markScenario(name){
     [...document.querySelectorAll("#scenarios .scenario")].forEach(el => el.classList.toggle("active", el.dataset.name===name));
@@ -3486,7 +3483,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   document.getElementById("footnote").innerHTML =
     "Live 3-node Cardano Dijkstra test network · the price controller is a dynamic fee mechanism (like Ethereum's EIP-1559, "+
     "adapted for Cardano: it aims for half-full blocks against each lane's own byte budget — 90,112 B for the RB, 12 MB for the EB — "+
-    "moves at most ±12.5% per block and never below the 44 lovelace/byte floor) · an endorser block only issues at ≥ half a ranking block (else the lane pools) · "+
+    "moves at most ±6.25% per block and never below the 44 lovelace/byte floor) · an endorser block only issues at ≥ half a ranking block (else the lane pools) · "+
     "fast-lane premium: a mechanism parameter, 3× on this demo (the urgent lane opens at 16× the patient rate, as in the design sims) · "+
     "every bid splits into base → fee pot, premium → treasury, headroom → refunded · ₳ 1 = 1,000,000 lovelace.";
 

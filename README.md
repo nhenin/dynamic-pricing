@@ -42,13 +42,14 @@ fee cap. Its full price is `base fee + rate × size`, where the per-byte
 
 ```
 quote_next = max( floor, round( quote × (1 + swing) ) )
-swing      = clamp( (fullness − target) / 2 , ± max step )
+swing      = (fullness − target) / (target × D)
 ```
 
 - **fullness** = bytes the lane's block carried ÷ the lane's *own* byte budget
 - **target** = ½ (the controller aims for half-full blocks — the other half is
   its price-signal headroom, not free space)
-- **floor** = 44 lovelace/byte · **max step** = ±12.5 % per block (damping D = 8)
+- **floor** = 44 lovelace/byte · **D** = 16, so a step is at most ±6.25 % per
+  block (the CIP's recommended calibration)
 - the urgent rate is always kept ≥ **3×** the optimistic one (a demo
   calibration — the CIP adopts no such floor; see *How this maps to the CIP*)
 
@@ -172,8 +173,6 @@ The CIP and this repo grew their own vocabularies. The mapping:
 The prototype predates parts of the CIP's recommended construction. The
 differences are calibration and scope, not mechanism:
 
-- **Damping:** D = 8 here (±12.5 %/block); the CIP recommends D = 16
-  (±6.25 %). Both sit inside the CIP's validated 8–16 envelope.
 - **Cross-lane floor:** 3× here; the CIP adopts none. Its experiments
   rejected fixed floors; temporary quote crossings are handled by a
   max-of-two fee cap instead.
