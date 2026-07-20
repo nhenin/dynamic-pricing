@@ -1,3 +1,7 @@
+
+
+https://github.com/user-attachments/assets/7f8f70f7-006c-452a-9086-6101a52c7d63
+
 # Two-lane dynamic pricing on Cardano — prototype & live demo
 
 A working prototype of **dynamic, two-lane transaction pricing** for Cardano
