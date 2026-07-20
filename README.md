@@ -12,6 +12,12 @@ git clone --recursive git@github.com:nhenin/dynamic-pricing.git
 git submodule update --init --recursive
 ```
 
+## The walkthrough (8 min)
+
+**[▶ Watch the demo](demo/demo-walkthrough.mp4)** — the two lanes live on
+the devnet: rush hour, a price squeeze with real evictions, the measured
+pots, a certification miss and its heal, the quiet end. Captions included.
+
 ## The idea in one minute
 
 Every Linear Leios block round carries **two block bodies**:
