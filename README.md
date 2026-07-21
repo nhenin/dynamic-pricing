@@ -45,7 +45,9 @@ quote_next = max( floor, round( quote × (1 + swing) ) )
 swing      = (fullness − target) / (target × D)
 ```
 
-- **fullness** = bytes the lane's block carried ÷ the lane's *own* byte budget
+- **fullness** = the lane's usage over a **window** of recent rounds (5
+  samples fast lane / 20 patient — the CIP's signals), each against its
+  *own* budget, in bytes and ex-units (the larger ratio wins)
 - **target** = ½ (the controller aims for half-full blocks — the other half is
   its price-signal headroom, not free space)
 - **floor** = 44 lovelace/byte · **D** = 16, so a step is at most ±6.25 % per
@@ -175,12 +177,11 @@ The CIP and this repo grew their own vocabularies. The mapping:
 
 The prototype runs the CIP's recommended construction: target utilisation
 0.5, max-change denominator 16, no cross-lane floor (crossings permitted),
-urgent opening coefficient 2×, admission one worst-case controller step
-ahead, the 45,056-byte announcement threshold, and the K = 10 announcement
-age escape. Two simplifications remain:
+urgent opening coefficient 2×, the 5-sample and 20-block signal windows,
+admission one worst-case controller step ahead, the 45,056-byte
+announcement threshold, and the K = 10 announcement age escape. One
+simplification remains:
 
-- **Signal windows:** one sample per block here; the CIP smooths the urgent
-  signal over 5 samples and the standard one over 20 blocks.
 - **Premium scope:** lanes are disjoint here — urgent settles only in
   ranking blocks; the CIP's rb-only rule also lets an urgent transaction
   settle through an EB at the standard quote. And certificates are

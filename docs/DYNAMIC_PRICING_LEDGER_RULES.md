@@ -205,10 +205,13 @@ no cross-lane constraint — the lanes publish independently and may briefly cro
 rejected fixed floors)
 ```
 
-Still deferred to calibration / the weekly: making `optimisticBlockCapacity` a protocol
-parameter (today a mainnet-calibrated constant), a real per-EB ExUnits budget,
-window smoothing over several blocks, the additive overflow-pricing term
-(`overflow_linear_price_per_fill` in Will's winner), and whether `target`/`D`/floor become
+**UPDATED (2026-07-21):** window smoothing is IMPLEMENTED per the CIP — each lane reads a
+window of recent samples (`Signal.hs`: urgent 5 samples against the reservation capacity,
+standard 20 capacity-weighted blocks; bytes AND ExUnits, larger ratio wins; both lanes step
+every sample-carrying reprice, the hold rules are gone). Still deferred: making
+`optimisticBlockCapacity` a protocol parameter (today a mainnet-calibrated constant), a real
+per-EB ExUnits budget, the additive overflow-pricing term
+(`overflow_linear_price_per_fill` in Will's winner), and whether `target`/`D` become
 protocol parameters.
 
 **Temporal semantics.** The prices published at the end of block *N* are what the UTXO
@@ -257,9 +260,9 @@ rule (and the mempool) judge the transactions of block *N+1* against.
    (`optimisticBlockCapacity` = 12 MB, the CIP-164 closure-size limit) for BOTH the pricing
    target and the B1 overflow hard cap (the EIP-1559 limit-vs-target split, spec-aligned with
    Polina's per-EB `regCap`). Consequence: at demo traffic the optimistic price rests at the
-   floor — the real regime, the one Giorgos's EB min-fill rule addresses. Still open: window
-   smoothing, the additive overflow term, a real per-EB ExUnits budget, and whether the knobs
-   become protocol parameters.
+   floor — the real regime, the one Giorgos's EB min-fill rule addresses. Window smoothing
+   landed 2026-07-21 (the CIP's 5/20 windows). Still open: the additive overflow term, a real
+   per-EB ExUnits budget, and whether the knobs become protocol parameters.
 5. **Linear-Leios cert/txs exclusivity, not DP pricing.** Current `leios-prototype` already makes a
    certifying Dijkstra block carry no RB txs on the wire; `resolveLeiosBlock` later substitutes the
    certified EB tx sequence for ledger application. Whether linear-Leios should allow "cert + inline

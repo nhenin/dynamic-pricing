@@ -690,10 +690,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       </div>
       <div class="rr-lane" style="--lane:var(--optimistic)">
         <div class="t">Optimistic · patient lane</div>
-        Same rule against its own <strong>12,000,000-byte</strong> budget (~133× bigger) — but judged <strong>only
-        when one of its endorser blocks actually counts</strong> (its certificate landed). Full EB counted → +6.25%
-        steps that compound; light EB → −6.25%; <strong>no EB counted → the price holds</strong>. A full pool now
-        climbs the staircase; a light trickle still decays to the floor.
+        Same rule against its own <strong>12,000,000-byte</strong> budget (~133× bigger). Each lane reads its
+        fullness over a <strong>window</strong> of recent rounds (5 samples for the fast lane, 20 for this one — the
+        CIP's signals), so one odd block cannot swing the price. Full EBs counted → +6.25% steps that compound;
+        ranking-block rounds weigh the window down. A full pool climbs the staircase; a trickle decays to the floor.
       </div>
     </div>
     <p class="hint" style="margin-top:12px">And that is the whole rule: the two lanes are priced
@@ -1325,7 +1325,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const cap = document.createElement("div");
     cap.className = "hint";
     cap.style.margin = "2px 0 0";
-    cap.innerHTML = `ribbons = the repricing dial unrolled, one cell per block: <span style="color:var(--live);font-weight:650">red</span> — the ledger stepped this price up (block over the ½ target) · <span style="color:var(--good);font-weight:650">green</span> — stepped down · grey — held. <strong>📥 marks a certificate round</strong>, and the two lanes do the <em>opposite</em> there: the <span style="color:var(--optimistic);font-weight:650">patient lane steps</span> (its endorser block finally counts — the staircase), while the <span style="color:var(--urgent);font-weight:650">fast lane holds</span> (a certificate applies the patient block, not a ranking block, so it is not an urgent verdict). Each lane only moves on its own transport's rounds — which is why neither ping-pongs under a full pool.`;
+    cap.innerHTML = `ribbons = the repricing dial unrolled, one cell per block: <span style="color:var(--live);font-weight:650">red</span> — the ledger stepped this price up (window over the ½ target) · <span style="color:var(--good);font-weight:650">green</span> — stepped down · grey — held. <strong>📥 marks a certificate round</strong>: the <span style="color:var(--optimistic);font-weight:650">patient lane steps on its endorser block</span> (the staircase), while the <span style="color:var(--urgent);font-weight:650">fast lane reads an idle reservation</span> and eases a little. Each lane reads a <em>window</em> of recent rounds (5 fast / 20 patient — the CIP's signals), which is why one odd block never whipsaws a price.`;
     host.append(cap);
   }
 
