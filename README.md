@@ -14,7 +14,7 @@ git submodule update --init --recursive
 
 ## The walkthrough (8 min)
 
-https://github.com/user-attachments/assets/7f8f70f7-006c-452a-9086-6101a52c7d63
+https://github.com/user-attachments/assets/6b3e4181-4610-4541-baa8-711e605c2614
 
 The two lanes live on the devnet: rush hour, a price squeeze with real
 evictions, the measured pots, a certification miss and its heal, the quiet
