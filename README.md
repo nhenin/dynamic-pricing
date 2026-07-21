@@ -182,10 +182,13 @@ admission one worst-case controller step ahead, the 45,056-byte
 announcement threshold, and the K = 10 announcement age escape. One
 simplification remains:
 
-- **Premium scope:** lanes are disjoint here — urgent settles only in
-  ranking blocks; the CIP's rb-only rule also lets an urgent transaction
-  settle through an EB at the standard quote. And certificates are
-  simplified (see *What's real, what's simulated*).
+- **Premium scope:** the ledger settles by DELIVERY (rb-only): an urgent
+  tx included through a certified EB is charged the standard quote, and
+  every fee cap is the max of the two quotes. The EB's FIFO merge across
+  both lanes is implemented and tested but gated off until announced-EB
+  txs are stripped from every node's mempool on closure download — so in
+  practice the lanes still run disjoint. And certificates are simplified
+  (see *What's real, what's simulated*).
 
 Neither touches what the prototype demonstrates: the lane rules, the
 repricing and the settlement running in the real ledger and node.

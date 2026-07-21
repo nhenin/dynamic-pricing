@@ -78,9 +78,20 @@ For a transaction `tx` declaring inclusion strategy `i`, against the current pub
 **Premise U1 — the bid covers the quote.**
 
 ```
-quoteFor pp tx (priceOf i P) ≤ tx.bidFee
-─────────────────────────────────────────  otherwise BidBelowQuote {expected, supplied}
+quoteFor pp tx (priceOf (chargedStrategy i delivery) P) ≤ tx.bidFee
+───────────────────────────────────────────────────────  otherwise BidBelowQuote {expected, supplied}
 ```
+
+**UPDATED (2026-07-21, the CIP's rb-only premium scope):** the applicable strategy follows
+the block's **delivery**, not the declaration — `chargedStrategy Urgent Certified = Optimistic`:
+an urgent transaction arriving through a certified endorser block pays the optimistic quote
+(validity, premium and refund alike). The delivery (`Immediate` | `Certified`) is stamped on
+the pricing state by the BBODY rule before the block's transactions run (a certificate-carrying
+ranking block is payload-free, so a block's transactions all share one delivery) and reset at
+the block boundary. The mempool's fee-cap basis becomes max-of-two for urgent bids (admission
+one worst-case step ahead, re-validation at the current max), since an urgent transaction may
+settle through either path. On a certified round, B1 bounds the block's TOTAL usage against
+the EB budgets. Riders are not yet produced — the mempool still keeps the lanes disjoint.
 
 where `quoteFor pp tx price = max (minimumTxFee pp tx) (txFeeFixed + price × txSizeInBytes tx)`.
 This *replaces* the era's plain min-fee premise (`minfee ≤ txFee`) — it degenerates to it
