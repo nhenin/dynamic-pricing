@@ -80,8 +80,17 @@ as opportunistic bonus capacity at forge time, not guaranteed admission capacity
 
 ### EB Retention
 
-Txs placed in an EB remain in the mempool until the EB is actually certified/adopted on-chain. Merely
-forging or announcing an EB does not remove its txs; otherwise an uncertified EB would lose txs.
+**UPDATED (2026-07-21, the announced-EB mempool strip):** as soon as a node knows what an
+announced EB carries (its body arrives — on the forger at forge time, elsewhere right after
+the small body download), those txs leave its mempool (`LeiosMempoolStrip`, driven by the
+same LeiosDb notifications as the voting loop). They are on their way on-chain through the
+certification pipeline; keeping them selectable would let a later RB carry one of them a
+second time — with riders in the EB (the CIP's FIFO merge, now on) the certified batch would
+then replay a spent input and become unappliable on every node. The EB applies from the
+closure in the LeiosDb, never from mempool copies, so certification does not need the txs
+retained; and the prototype has no EB-abandonment path (one EB in flight, it stalls until
+certified), so nothing is lost by stripping early. The old rule — keep txs until
+certification lest an uncertified EB lose them — is superseded.
 
 ## InternalState — two physical lanes, one chained ledger order
 

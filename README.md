@@ -179,16 +179,19 @@ The prototype runs the CIP's recommended construction: target utilisation
 0.5, max-change denominator 16, no cross-lane floor (crossings permitted),
 urgent opening coefficient 2×, the 5-sample and 20-block signal windows,
 admission one worst-case controller step ahead, the 45,056-byte
-announcement threshold, and the K = 10 announcement age escape. One
-simplification remains:
+announcement threshold, and the K = 10 announcement age escape.
 
-- **Premium scope:** the ledger settles by DELIVERY (rb-only): an urgent
-  tx included through a certified EB is charged the standard quote, and
-  every fee cap is the max of the two quotes. The EB's FIFO merge across
-  both lanes is implemented and tested but gated off until announced-EB
-  txs are stripped from every node's mempool on closure download — so in
-  practice the lanes still run disjoint. And certificates are simplified
-  (see *What's real, what's simulated*).
+- **Premium scope (rb-only), live:** the ledger settles by DELIVERY: an
+  urgent tx included through a certified EB is charged the standard quote
+  (excess refunded), and every fee cap is the max of the two quotes. The
+  EB is the FIFO merge of both lanes, so urgent overflow rides the
+  endorser block. What keeps that safe: as soon as a node stores an
+  announced EB's body, those txs leave its mempool — so no later ranking
+  block carries one of them twice. Verified on the live network:
+  thousands of riders per EB, identical strip counts on all three nodes,
+  certificates applying round after round.
 
-Neither touches what the prototype demonstrates: the lane rules, the
-repricing and the settlement running in the real ledger and node.
+One simplification remains — the certificates (see *What's real, what's
+simulated*). It does not touch what the prototype demonstrates: the lane
+rules, the repricing and the settlement running in the real ledger and
+node.

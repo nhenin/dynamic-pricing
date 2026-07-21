@@ -91,7 +91,12 @@ ranking block is payload-free, so a block's transactions all share one delivery)
 the block boundary. The mempool's fee-cap basis becomes max-of-two for urgent bids (admission
 one worst-case step ahead, re-validation at the current max), since an urgent transaction may
 settle through either path. On a certified round, B1 bounds the block's TOTAL usage against
-the EB budgets. Riders are not yet produced — the mempool still keeps the lanes disjoint.
+the EB budgets. **UPDATED (2026-07-21, riders on):** the endorser block is now the FIFO
+ticket-merge of the urgent remainder and the optimistic lane, so urgent riders do arrive
+through certified endorser blocks and settle at the optimistic quote. The consensus side
+keeps this safe with the announced-EB mempool strip: as soon as a node stores an announced
+endorser block's body, its transactions leave that node's mempool, so no later ranking block
+carries one of them a second time (see `MEMPOOL_2LANE_DESIGN.md`, "EB Retention").
 
 where `quoteFor pp tx price = max (minimumTxFee pp tx) (txFeeFixed + price × txSizeInBytes tx)`.
 This *replaces* the era's plain min-fee premise (`minfee ≤ txFee`) — it degenerates to it
