@@ -1000,6 +1000,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       closure budget (~133× the RB) — so honest EB percentages run small; the tx count depends on tx size
       (see <em>One round, two blocks</em> in ⚙️ The mechanism). Aligned on the same axis: watch a full teal fast lane push the urgent quote up on the next step, and a dashed endorser block (awaiting or missed certification) leave the patient lane's payments waiting.</p>
       <div class="legend">
+        <span><span class="sw" style="background:#3b82f6; opacity:.35"></span><span class="sw" style="background:#a855f7; opacity:.35"></span><span class="sw" style="background:#ec4899; opacity:.35"></span>column tint = forging node (node1 · node2 · node3)</span>
         <span><span class="sw" style="background:var(--rb)"></span>RB · urgent tx (applied instantly)</span>
         <span><span class="sw" style="background:var(--eb)"></span>EB · standard tx + urgent riders · certified</span>
         <span><span class="sw" style="background:var(--eb); opacity:.3; outline:1.5px dashed var(--eb)"></span>EB awaiting votes (doesn't count yet)</span>
@@ -1685,7 +1686,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     // that ties an RB to ITS endorser block (same language as the anatomy
     // diagram in the Mechanism view). Tight gap inside a pair, wide gap
     // between pairs, so the grouping reads at a glance.
-    const bands = blocks.map(b => ({x1: b.i - 0.48, x2: b.i + 0.48, i: b.i}));
+    const bands = blocks.map(b => ({x1: b.i - 0.48, x2: b.i + 0.48, i: b.i, node: b.node}));
     const rects = [];
     let prevB = null;
     for (const b of blocks){
@@ -1727,7 +1728,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       marks: [
         Plot.gridY({stroke:t.grid}),
         Plot.rect(bands, {x1:"x1", x2:"x2", y1: 0, y2: 104,
-          fill: t.text, fillOpacity: 0.05,
+          // The column wears its forger's colour, faintly - who produced
+          // each block reads at a glance without stealing the lanes' show.
+          fill: d => d.node ? nodeColor(d.node) : t.text, fillOpacity: 0.07,
           stroke: d => d.i === selectedBlock ? t.text : "none",
         }),
         Plot.ruleY([50], {stroke:t.axis, strokeDasharray:"4,3"}),
