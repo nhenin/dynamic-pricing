@@ -392,7 +392,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           <!-- fast lane -->
           <rect x="234" y="66" width="296" height="38" rx="19" fill="var(--urgent)" fill-opacity="0.12" stroke="var(--urgent)" stroke-width="2"></rect>
           <text x="382" y="84" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--urgent)">URGENT · the fast lane</text>
-          <text x="382" y="98" text-anchor="middle" font-size="10" fill="var(--text)">a small block every round — scarce, instant</text>
+          <text x="382" y="98" text-anchor="middle" font-size="10" fill="var(--text)">a small instant block — overflow rides the next EB</text>
           <rect x="292" y="30" width="180" height="22" rx="11" fill="none" stroke="var(--urgent)" stroke-width="1.2" stroke-dasharray="4 3"></rect>
           <text x="382" y="45" text-anchor="middle" font-size="10" fill="var(--urgent)">price: high · steps with demand</text>
           <path d="M382,52 L382,63" stroke="var(--urgent)" stroke-width="1.2" stroke-dasharray="3 3" fill="none"></path>
@@ -439,7 +439,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           <h3 class="tag" style="color:var(--urgent)">Urgent · the fast lane</h3>
           <p>Time-critical <span data-term="transaction">transactions</span>, riding the
           <span data-term="RB">ranking block</span> <span data-term="forge">forged</span> every round. Space is scarce,
-          so its <span data-term="quote">quote</span> climbs fast under load — and eases back as the lane clears.</p>
+          so its <span data-term="quote">quote</span> climbs fast under load — and eases back as the lane clears.
+          When the small block overflows, the remainder rides the next
+          <span data-term="EB">endorser block</span> as <em>riders</em> — and pays only the standard quote on that
+          slower delivery.</p>
         </div>
         <div class="lane-card" style="border-left:3px solid var(--optimistic)">
           <h3 class="tag" style="color:var(--optimistic)">Optimistic · the patient lane</h3>
@@ -450,9 +453,11 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         <div class="lane-card" style="border-left:3px solid #7c3aed">
           <h3 class="tag" style="color:#7c3aed">💰 Where the money goes</h3>
           <p>Your fee is a <span data-term="bid">bid</span> — a ceiling, not a price. The ledger charges the live
-          <span data-term="quote">quote</span>: the base stays in the <span data-term="fee pot">fee pot</span>, the
-          <span data-term="premium">premium</span> is donated to the treasury, the rest is
-          <span data-term="refund">refunded</span>. The 💰 <strong>Incentives</strong> panel measures all three pots live.</p>
+          <span data-term="quote">quote</span> of the block that actually delivers you — an urgent rider arriving
+          in a certified endorser block pays only the standard quote. The base stays in the
+          <span data-term="fee pot">fee pot</span>, the <span data-term="premium">premium</span> is donated to the
+          treasury, the rest is <span data-term="refund">refunded</span>. The 💰 <strong>Incentives</strong> panel
+          measures all three pots live.</p>
         </div>
       </div>
 
@@ -496,7 +501,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         <text x="140" y="184" text-anchor="middle" font-size="11" font-weight="600" fill="var(--rb)">applied to the ledger immediately</text>
         <path d="M492,136 L492,164" stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#arrow-anat)"></path>
         <text x="492" y="184" text-anchor="middle" font-size="11" font-weight="600" fill="var(--eb)">applied only once certified</text>
-        <text x="492" y="200" text-anchor="middle" font-size="10" fill="var(--muted)">until then, its tx keep waiting</text>
+        <text x="492" y="200" text-anchor="middle" font-size="10" fill="var(--muted)">its tx leave every pool at announcement</text>
       </svg>
     </div>
     <p class="hint" style="margin:8px 0 0">Capacity is measured in <em>bytes</em>, not tx. Max tx size is 16,384 bytes.
@@ -733,8 +738,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   <div class="panel">
     <h2>The fee split <span style="font-weight:400;color:var(--muted)">— who receives what a sender pays</span></h2>
     <p class="hint">A sender writes one number into their transaction: the <span data-term="bid">bid</span>. The ledger
-      charges the live <span data-term="quote">quote</span> and splits the bid three ways, conserving every lovelace —
-      <strong>base + premium + refund = bid</strong>:</p>
+      charges the live <span data-term="quote">quote</span> of the block that delivers it — the urgent quote in the
+      ranking block, the standard quote when it arrives as a rider in a certified endorser block — and splits the bid
+      three ways, conserving every lovelace — <strong>base + premium + refund = bid</strong>:</p>
     <div style="display:flex;flex-direction:column;gap:6px;margin:6px 0 2px;font-size:13.5px;line-height:1.6">
       <div>🏗 <strong>Base</strong> — the protocol minimum fee — stays in the <span data-term="fee pot">fee pot</span>:
         the floor every transaction contributes to the operators, however cheap its lane. At the epoch boundary the
@@ -744,8 +750,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         block producer's luck.</div>
       <div>↩️ <strong>Refund</strong> — bid − quote, the unused headroom — is credited back to the transaction's
         <strong>refund account</strong> after the block. The bid is a ceiling, not a price: this demo's senders bid the
-        live quote × their <span data-term="fee buffer">fee buffer</span> (a cockpit slider), so the refund is exactly
-        the buffer margin.</div>
+        live quote × their <span data-term="fee buffer">fee buffer</span> (a cockpit slider), so the refund is at least
+        the buffer margin — an urgent rider delivered by a certified endorser block is charged the standard quote, and
+        the urgent-to-standard drop comes back too.</div>
     </div>
     <p class="hint" style="margin-top:8px">The catch worth knowing: the split only runs for a transaction that <em>names</em>
       a refund account (a registered staking account — this demo uses one of the devnet's genesis delegators). A transaction
@@ -785,10 +792,12 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 
   <div class="panel">
     <p class="hint" style="margin:0 0 10px"><strong>The mempool's rules of the game:</strong> a transaction is admitted only if
-      its bid covers the lane's current quote; while it waits, a rising quote can evict it (priced out); a coin conflict is
-      settled first-come — the transaction admitted first keeps the coin, the newcomer is turned away; a patient-lane
-      block only counts once the committee certifies it; and it is only <em>issued</em> when the patient selection
-      carries at least half a ranking block — below that the lane pools for the next round.</p>
+      its bid covers the current quote — for urgent senders the higher of the two, since delivery may come through either
+      block; while it waits, a rising quote can evict it (priced out); a coin conflict is
+      settled first-come — the transaction admitted first keeps the coin, the newcomer is turned away; an endorser
+      block only counts once the committee certifies it; and it is only <em>issued</em> when its payload — the patient
+      queue merged first-come with the urgent overflow — carries at least half a ranking block; below that the round
+      pools for the next one.</p>
     <details class="concepts" style="margin-top:8px">
       <summary>How does one sender decide? — try a single transaction</summary>
       <div style="padding:10px 0 4px">
@@ -796,7 +805,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       loses value the longer it waits (its deadline nears) — and the patient lane is slower, so it loses more there. At the
       <strong>current live quotes</strong> the sender keeps whichever lane leaves more value after the fee — its
       <span data-term="retained value">retained value</span> — or <span data-term="shedding">walks away</span> if neither pays
-      off. Drag the sliders and watch the winning lane flip as prices move.</p>
+      off. The fast-lane fee shown is the ceiling: if the small block overflows and the tx rides an endorser block
+      instead, it is charged the patient rate on arrival. Drag the sliders and watch the winning lane flip as prices move.</p>
     <div class="controls" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); margin-bottom:10px">
       <div class="slider-row"><label>transaction value (₳)<b id="v-txvalue">20</b></label>
         <input type="range" id="s-txvalue" min="1" max="60" step="1" value="20"></div>
@@ -845,7 +855,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   <summary class="sechead">
     <div class="secnum">📊</div>
     <div><h2>Live — you drive the demand, the chain answers</h2><p>The cockpit and its journals on top; below them the two live quotes and the very blocks that drive them —
-      same axis, same story: a lane that fills pushes its next quote up, and a patient-lane block that misses certification leaves its payments waiting.</p></div>
+      same axis, same story: a lane that fills pushes its next quote up, and an endorser block that misses certification leaves its payments — patient txs and urgent riders alike — undelivered.</p></div>
     <span class="chev" aria-hidden="true">▾</span>
   </summary>
 
@@ -941,7 +951,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       <p class="hint" style="font-size:12px;margin:6px 0 0">How the senders bid: each transaction bids its lane's
       <strong>live quote × the fee buffer</strong> (the cockpit slider — headroom against being priced out while waiting),
       capped by the demo's <code>FEE</code> ceiling. The refund is that buffer margin coming back once the going rate is
-      charged. Set the buffer to 0 in the cockpit to restore the old flat-ceiling bids and watch the refunds balloon.</p>
+      charged — plus, for urgent riders delivered by a certified endorser block, the drop from the urgent quote to the
+      standard one. Set the buffer to 0 in the cockpit to restore the old flat-ceiling bids and watch the refunds balloon.</p>
     </details>
 
   <details class="panel" id="pane-history" open>
@@ -988,7 +999,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       (see <em>One round, two blocks</em> in ⚙️ The mechanism). Aligned on the same axis: watch a full teal fast lane push the urgent quote up on the next step, and a dashed endorser block (awaiting or missed certification) leave the patient lane's payments waiting.</p>
       <div class="legend">
         <span><span class="sw" style="background:var(--rb)"></span>RB · urgent tx (applied instantly)</span>
-        <span><span class="sw" style="background:var(--eb)"></span>EB · optimistic tx · certified</span>
+        <span><span class="sw" style="background:var(--eb)"></span>EB · optimistic tx + urgent riders · certified</span>
         <span><span class="sw" style="background:var(--eb); opacity:.3; outline:1.5px dashed var(--eb)"></span>EB awaiting votes (doesn't count yet)</span>
         <span><span class="sw" style="background:var(--shed); opacity:.4; outline:1.5px dashed var(--shed)"></span>EB superseded (replaced before certification — its tx moved to a later block)</span>
         <span><span class="sw" style="background:var(--live); opacity:.25; outline:1.5px dashed var(--live)"></span>EB certification stalled (nothing certifies — see the Certification-miss scenario)</span>
@@ -1141,7 +1152,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       kpi("Optimistic quote now", now.optimistic.toLocaleString(), tok("--optimistic"), feePerKb(now.optimistic)+" per 1 KB tx"),
       kpi("Fast-lane premium", minRatio.toFixed(1) + "×", tok("--good"), "urgent ÷ optimistic · no floor — crossings permitted"),
       kpi("Demand served", served, tok("--good"), pricedOut || "share routed to a lane"),
-      kpi("Transactions / block", (now.rb+now.eb).toLocaleString(), tok("--eb"), "RB "+now.rb+" · EB "+now.eb),
+      kpi("Transactions / block", (now.rb+now.eb+(now.ebUrgent||0)).toLocaleString(), tok("--eb"), "RB "+now.rb+" · EB "+now.eb+(now.ebUrgent?" +"+now.ebUrgent+" riders":"")),
       kpi("Blocks observed", all.length.toLocaleString(), tok("--muted"), mode==="static"?"replay of a captured run":"live · node1"),
     ].join("");
   }
@@ -1313,7 +1324,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       yTicks: undefined,
       liveQ: lqLive.qo, withAxis: true,
       queueThresholdBytes: RB_BYTE_BUDGET / 2,
-      queueThresholdLabel: "min fill (45 KB) — queue below this line: the lane pools, no EB issues",
+      queueThresholdLabel: "min fill (45 KB) — EB payload (this queue + urgent riders) below this: the round pools, no EB issues",
     });
 
     host.innerHTML = "";
@@ -1484,7 +1495,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     }
   }
   function ebStatus(b){
-    if (!b || !b.eb) return null;                       // no optimistic block this round
+    if (!b || !b.eb) return null;                       // no endorser block this round
     return ebJoin.get(b.i) || "unknown";
   }
 
@@ -1524,7 +1535,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const so = b.ebBytes != null && b.eb ? ` · ${stepFromFullness(ebPct(b))}` : "";
     return `<div class="tiphead">block #${b.i}${nodeBadge(b)}</div>`+
       tipRow(tok("--urgent"), "URGENT", `<strong>${adaKb(b.urgent)}</strong> · ${(b.qu??0).toLocaleString()} tx waiting · ${b.rb} tx in block${su}`)+
-      tipRow(tok("--optimistic"), "OPTIMISTIC", `<strong>${adaKb(b.optimistic)}</strong> · ${(b.qo??0).toLocaleString()} tx waiting · ${b.eb} tx in block${so}`);
+      tipRow(tok("--optimistic"), "OPTIMISTIC", `<strong>${adaKb(b.optimistic)}</strong> · ${(b.qo??0).toLocaleString()} tx waiting · ${b.eb} tx${b.ebUrgent?` + ${b.ebUrgent} riders`:``} in block${so}`);
   }
   // Block fullness in % of the lane's BYTE budget — the true measure (capacity
   // is bytes; tx counts mislead when fat and thin txs mix). Records from before
@@ -1611,7 +1622,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const landed = b.certIn ? `<div style="color:var(--good);font-size:11px;margin-top:2px">📥 a certificate landed here — that endorser block's ${(b.certIn.numTxs||0).toLocaleString()} tx count in THIS block's pricing</div>` : "";
     return `<div class="tiphead">block #${b.i}${nodeBadge(b)}</div>`+
       tipRow(tok("--rb"), "URGENT", `RB · <strong>${rbPct(b)}%</strong> full${est} · ${b.rb} tx, applied instantly`)+
-      tipRow(tok("--eb"), "OPTIMISTIC", `EB · <strong>${ebPct(b)}%</strong> full${est} · ${b.eb} tx${cert}`)+ landed +
+      tipRow(tok("--eb"), "OPTIMISTIC", `EB · <strong>${ebPct(b)}%</strong> full${est} · ${b.eb} tx${b.ebUrgent?` + ${b.ebUrgent} urgent riders`:``}${cert}`)+ landed +
       `<div class="tiphint">% of the lane's byte budget · click for the full diary entry</div>`;
   }
 
@@ -1756,7 +1767,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const pct = (d, base) => base ? ` (${d>0?"+":""}${Math.round(100*d/base)}%)` : "";
     const st = ebStatus(b);
     const ebLine = !b.eb
-      ? `no optimistic block this round`
+      ? `no endorser block this round`
       : st === "certified"
         ? `<span style="color:var(--eb)">✓ certified</span> — its ${b.eb} tx count` + (b.ebHash?` <span class="hint" style="margin:0">(eb ${b.ebHash})</span>`:``)
         : st === "awaiting"
@@ -1777,7 +1788,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       `<button type="button" class="scenario" style="padding:2px 10px" onclick="this.parentElement.parentElement.style.display='none'">close</button></div>`+
       `<div style="margin-top:4px; line-height:1.7">`+
       `① <span style="color:var(--rb)">fast lane: ${b.rb} urgent tx</span> — applied first, instantly<br>`+
-      `② <span style="color:var(--eb)">patient lane: ${b.eb} optimistic tx</span> — ${ebLine}<br>`+
+      `② <span style="color:var(--eb)">patient lane: ${b.eb} optimistic tx${b.ebUrgent?` + ${b.ebUrgent} urgent riders`:``}</span> — ${ebLine}<br>`+
       `③ reprice: urgent ${prev?adaKb(prev.urgent)+" → ":""}${adaKb(b.urgent)}${pct(du, prev?.urgent)} · `+
       `optimistic ${prev?adaKb(prev.optimistic)+" → ":""}${adaKb(b.optimistic)}${pct(dm, prev?.optimistic)}<br>`+
       `④ left waiting: ${b.qu ?? "–"} urgent tx · ${b.qo ?? "–"} optimistic tx</div>`;
@@ -1837,7 +1848,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         `<div class="small">worth this now · loses value while it waits</div></div>`+
       `<div class="txstep ${cls('urgent')}"><div class="n">2a · fast lane</div>`+
         `<div class="big" style="color:var(--urgent)">${surplus(utilU)}</div>`+
-        `<div class="small">keep ${ada(retU)} − fee ${ada(feeU)} · waits ~${uLat} ${uLat===1?'block':'blocks'}</div></div>`+
+        `<div class="small">keep ${ada(retU)} − fee ≤ ${ada(feeU)} · waits ~${uLat} ${uLat===1?'block':'blocks'}</div></div>`+
       `<div class="txstep ${cls('optimistic')}"><div class="n">2b · patient lane</div>`+
         `<div class="big" style="color:var(--optimistic)">${surplus(utilO)}</div>`+
         `<div class="small">keep ${ada(retO)} − fee ${ada(feeO)}${resv!==1?` ×${resv}`:``} · waits ~${oLat} ${oLat===1?'block':'blocks'}</div></div>`+
@@ -2190,7 +2201,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         `<span style="color:var(--rb)">RB ${rbPct(b)}% full · ${b.rb} urgent tx</span> · `+
         (sameEb
           ? `<span style="color:var(--eb)">EB — the same endorser block, still in flight</span>`
-          : `<span style="color:var(--eb)">EB ${ebPct(b)}% full · ${b.eb} optimistic tx</span>`)+
+          : `<span style="color:var(--eb)">EB ${ebPct(b)}% full · ${b.eb} optimistic tx${b.ebUrgent?` + ${b.ebUrgent} riders`:``}</span>`)+
         ` &nbsp;→&nbsp; reprice: urgent ${adaKb(b.urgent)}${arrow(du) ? " " + arrow(du) : ""} · optimistic ${adaKb(b.optimistic)}${arrow(dm) ? " " + arrow(dm) : ""}`+
         ` <span class="hint" style="margin:0">(${verdictU}; waiting: ${(b.qu ?? 0).toLocaleString()} urgent / ${(b.qo ?? 0).toLocaleString()} patient)</span>${ebBadge}`+
         `</div>`);
@@ -2210,7 +2221,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       if (leiosStatus){
         cert.innerHTML = `Endorser-block certification: <strong>${leiosStatus.certified}</strong> certified · `+
           `<strong>${leiosStatus.pendingEbs}</strong> awaiting committee votes`+
-          (leiosStatus.pendingTxs ? ` <span class="hint" style="margin:0">(carrying ${leiosStatus.pendingTxs.toLocaleString()} patient payments)</span>` : ``);
+          (leiosStatus.pendingTxs ? ` <span class="hint" style="margin:0">(carrying ${leiosStatus.pendingTxs.toLocaleString()} payments — patient txs and urgent riders)</span>` : ``);
       } else {
         cert.textContent = "Endorser-block certification: live status appears when the devnet runs.";
       }
@@ -2367,7 +2378,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     off:   "Nothing forced right now — only the regular crowd of senders.",
     type1: "Floods the fast lane with bids set just above today's price (×1.35); the burst's own full blocks push the quote past them within a block or two and their queued txs are dropped.",
     type2: "Sends pairs of txs fighting over one coin — first-come keeps it, the late urgent tx is turned away at the door.",
-    type3: "Silences the certification committee — the whole patient lane freezes until you flip back to Quiet."
+    type3: "Silences the certification committee — everything riding the endorser blocks, patient txs and urgent riders alike, freezes until you flip back to Quiet."
   };
   const EVGEN_NAMES = {off: "pressure off", type1: "price squeeze on", type2: "coin clash on", type3: "certification miss on"};
   // Same shape as the crowd scenarios: one chip = one situation, spec upfront.
@@ -2720,8 +2731,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
                    : `<span class="hint" style="margin:0">none of its txs turned away yet</span>`;
       } else if (r.mode === "type3"){
         effect = (active && leiosStatus && leiosStatus.pendingTxs)
-          ? `<b style="color:var(--live)">patient lane stalled — ${leiosStatus.pendingTxs.toLocaleString()} crowd tx awaiting certification</b>`
-          : `<span class="hint" style="margin:0">stalls the patient lane while on (nothing is dropped)</span>`;
+          ? `<b style="color:var(--live)">certified delivery stalled — ${leiosStatus.pendingTxs.toLocaleString()} tx (patient + riders) awaiting certification</b>`
+          : `<span class="hint" style="margin:0">stalls certified delivery while on (nothing is dropped)</span>`;
       } else {
         effect = `<span class="hint" style="margin:0">no forced trouble — drops tail off within a block or two</span>`;
       }
@@ -3011,10 +3022,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       const pend = leiosStatus ? leiosStatus.pendingTxs : 0;
       const pendEbs = leiosStatus ? leiosStatus.pendingEbs : 0;
       html += `<div style="border-top:1px solid var(--border); padding-top:8px">` +
-        `<strong style="color:var(--live)">The committee is silenced — nothing is dropped, everything patient waits.</strong>` +
+        `<strong style="color:var(--live)">The committee is silenced — nothing is dropped, everything aboard waits.</strong>` +
         `<p class="hint" style="margin:4px 0 0">${pendEbs.toLocaleString()} endorser block(s) awaiting votes, carrying
-        ${pend.toLocaleString()} optimistic tx (the crowd's). Only one endorser block is in flight at a time, so the whole
-        patient lane is frozen until the votes return (flip to Quiet to heal).</p></div>`;
+        ${pend.toLocaleString()} tx — the crowd's optimistic plus any urgent riders. Only one endorser block is in flight
+        at a time, so certified delivery is frozen until the votes return (flip to Quiet to heal).</p></div>`;
     }
     if (myTurn !== modalSeq) return;   // a newer click superseded this one mid-load
     document.getElementById("cmd-modal-body").innerHTML = html;
@@ -3315,9 +3326,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       const premKb = (r) => "₳ " + ((r - base) * REF_TX_BYTES / 1e6).toFixed(3);
       const share  = (r) => r > 0 ? Math.round((r - base) / r * 100) : 0;
       quant.innerHTML =
-        `<b>What a 1 KB transaction pays right now:</b> urgent <b>${adaKb(L.urgent)}</b>`+
+        `<b>What a 1 KB transaction is quoted right now:</b> urgent <b>${adaKb(L.urgent)}</b>`+
         ` — premium ${premKb(L.urgent)} (${share(L.urgent)}% of its per-byte cost) · `+
         `optimistic <b>${adaKb(L.optimistic)}</b> — premium ${premKb(L.optimistic)} (${share(L.optimistic)}%).`+
+        ` The urgent quote is paid only on ranking-block delivery — a rider in a certified endorser block is charged the optimistic one.`+
         ` The base — <b>${base} lovelace/byte</b> — is the fee pot's share; the premium is the treasury's.`;
     }
   }
@@ -3328,7 +3340,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     "forge":"To create a new block and add it to the blockchain (similar to mining on other networks). One node forges each block.",
     "lane":"One of two parallel paths for transactions: Urgent (fast) for time-sensitive work, Optimistic (patient) for routine work. Each lane has its own live price and queue.",
     "rb":"Ranking Block — the fast-lane block forged every round. Carries only urgent transactions. Smaller, so its space is scarce and its price climbs faster.",
-    "eb":"Endorser Block — the patient-lane block forged alongside the RB, applied only once the committee certifies it; only one is in flight at a time. Carries optimistic transactions in a 12 MB budget (~133× the RB), and is only issued when at least half a ranking block's worth is waiting — below that the lane pools. Bigger and far cheaper, for traffic that can wait a little.",
+    "eb":"Endorser Block — the big block forged alongside the RB, applied only once the committee certifies it; only one is in flight at a time. Carries the first-come merge of optimistic transactions and the urgent overflow that missed the ranking block (its riders) in a 12 MB budget (~133× the RB), and is only issued when its payload is worth at least half a ranking block — below that the round pools. A rider delivered this way is charged the optimistic quote, the excess refunded.",
     "diffusion time":"How long a transaction is expected to take to spread across the network. Each lane's pool only admits a bounded total of it — when that budget is full, new senders are held back until the pool drains.",
     "quote":"The current published per-byte rate for a lane — a live signal of how busy it is; it updates every block as demand changes. A transaction's full price = a small fixed part (the base fee) + this rate × its size; its bid must cover that total to enter and to stay.",
     "bid":"The fee a sender writes into their transaction, capping what they'll pay. The network charges the live quote at inclusion time and refunds the difference.",
@@ -3439,7 +3451,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       watch:"The scenario forces 85% of txs onto the patient lane. Watch the endorser blocks fill to the brim — certification becomes the pace-setter. (Combine with ⚡ Certification miss to freeze it.)" },
     { name:"Urgent storm", spec:"max tx/s · 100% urgent (forced)",
       config:{...ACTOR_PRESETS["Balanced"]}, delayMs:0, laneMix:0,
-      watch:"Every tx force-fed into the fast lane, as fast as the node accepts. Watch the ranking blocks saturate at 430 tx, the urgent quote ration hard, and the queue climb — the patient lane sits empty the whole time." },
+      watch:"Every tx force-fed into the fast lane, as fast as the node accepts. Watch the ranking blocks saturate at 430 tx, the urgent quote ration hard, and the queue climb — and the overflow ride the endorser blocks as riders, charged only the standard quote on that slower delivery." },
     { name:"Optimistic storm", spec:"max tx/s · 100% optimistic (forced) · fat 12 KB txs",
       config:{...ACTOR_PRESETS["Balanced"]}, delayMs:0, laneMix:1, metadataBytes:12000,
       watch:"Every tx force-fed into the patient lane, as fast as the node accepts — and each one carries a fat 12 KB payload, so the bytes pour in far faster than even a 12 MB endorser block drains them. Watch the EBs pin at 100%, the queue balloon, and certification set the pace." },
