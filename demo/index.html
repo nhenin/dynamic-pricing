@@ -2829,7 +2829,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       // the door's work, worth its own cell. On the live one it is just churn.
       const finished = (Date.now() - (g.lastSeen || 0) * 1000) > 30000;
       const refused = Math.max(0, g.sent - (g.shed || 0) - g.accepted);
-      const showRefused = finished && refused > 2;
+      // Live too: under saturation this is the rationing story (the pool caps
+      // holding senders back). The floor hides the handful genuinely in
+      // flight between decision and acceptance.
+      const showRefused = refused > (finished ? 2 : 50);
       html += `<div style="display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 10px">` +
         cell("sent", g.sent.toLocaleString()) +
         cell("urgent", g.urgent.toLocaleString(), "var(--urgent)") +
@@ -2852,7 +2855,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           g.stranded.toLocaleString() + laneSplit(g.strandedUrgent, g.strandedOptimistic), "var(--live)") : "") +
         ((g.returned || 0) ? cell("💸↩ priced out on return",
           g.returned.toLocaleString() + laneSplit(g.returnedUrgent, g.returnedOptimistic), "var(--live)") : "") +
-        (showRefused ? cell("🚪 not admitted", refused.toLocaleString(), "var(--live)") : "") +
+        (showRefused ? cell("🚪 held back at the door", refused.toLocaleString(), "var(--shed)") : "") +
         `</div>` +
         `<p class="hint" style="margin:0 0 10px">These are the txs the simulated crowd sent while this setting was active.
         Waiting = accepted into the mempool, not yet settled — standard txs ride the announced endorser block until its certificate lands.
@@ -2862,7 +2865,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         🚿 Flushed = removed by hand (the presenter's flush command) — a demo reset, not the mechanism.` +
         (g.stranded ? ` 🏝 Stranded = stripped for an endorser block that never got its certificate — gone from every mempool, never settled.` : "") +
         (g.returned ? ` 💸↩ Priced out on return = its endorser block missed certification; when the mempool got it back, the quote had climbed past its max fee — the same verdict eviction would have delivered.` : "") +
-        (showRefused ? ` 🚪 Not admitted = never let into the queue — usually a max fee already below the quote on arrival, or a payment whose parent tx had just been dropped.` : "") +
+        (showRefused ? ` 🚪 Held back at the door = sent but never admitted — the lane's pool caps and admission checks held them out (a max fee already below the quote on arrival, a full pool rationing its space, or a payment whose parent had just been dropped). Not drops: the crowd simply could not board at that price and pace.` : "") +
         `</p>`;
       if ((g.evicted || 0) + (g.orphaned || 0) > 0)
         html += await crowdDropStory(g);
