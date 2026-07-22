@@ -1004,7 +1004,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         <span><span class="sw" style="background:var(--shed); opacity:.4; outline:1.5px dashed var(--shed)"></span>EB superseded (replaced before certification — its tx moved to a later block)</span>
         <span><span class="sw" style="background:var(--live); opacity:.25; outline:1.5px dashed var(--live)"></span>EB certification stalled (nothing certifies — see the Certification-miss scenario)</span>
         <span><span class="sw" style="background:var(--eb); opacity:.1"></span>ghost — the same in-flight EB re-announced (one cargo, shown once per round; only the applied one counts)</span>
-        <span><span class="sw" style="background:var(--good); opacity:.6"></span>→ 📥 certification arrow — from the block that announced an EB to the block whose certificate makes it count; the arrow's length IS the certification wait</span>
+        <span><span class="sw" style="background:var(--good); opacity:.6"></span>→ 📥 certification arrow — from the block that announced an EB to the block whose certificate makes it count; the arrow's length IS the certification wait. The delivering block wears the certified EB's mass as a green-edged outline with its tx count — the column looks light, but it is the round where those txs land</span>
       </div>
       <p class="hint" style="margin:2px 0 4px">Click a block to unfold its diary entry.</p>
       <figure id="panel-comp" style="margin:0"></figure>
@@ -1694,12 +1694,19 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     }
     // The certification pipeline, drawn: an arc from the block that ANNOUNCES
     // an endorser block to the block whose certificate makes it COUNT. The
-    // gap between the two ends of each arc IS certification time.
+    // gap between the two ends of each arc IS certification time. The
+    // delivering block gets the certified EB's mass drawn as an outline —
+    // the column LOOKS light, but it is the round where those txs land.
     const certArcs = [];
+    const delivRects = [];
     for (const b of blocks){
       if (!b.certIn || !b.certIn.hash) continue;
       const src = [...blocks].reverse().find(a => a.i < b.i && a.ebHash === b.certIn.hash);
-      if (src) certArcs.push({x1: src.i, y1: Math.min(100, ebPct(src)) + 3, x2: b.i, y2: 12, i: b.i});
+      const n = b.certIn.numTxs || (src ? src.eb + (src.ebUrgent || 0) : 0);
+      if (src) certArcs.push({x1: src.i, y1: Math.min(100, ebPct(src)) + 3, x2: b.i, y2: 12, i: b.i, n});
+      // Only when the column's EB slot is free — a block that both carries
+      // the certificate and announces its own EB keeps its announced bar.
+      if (src && !b.eb) delivRects.push({x1: b.i + 0.01, x2: b.i + 0.42, y1: 0, y2: ebPct(src), i: b.i});
     }
     const FILL = { rb: tok("--rb"), eb: tok("--eb"), ebwait: tok("--eb") };
     const xDom = [blocks[0].i - 0.5, Math.max(blocks[blocks.length-1].i, blocks[0].i + 39) + 0.5];
@@ -1734,9 +1741,17 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         Plot.rect(rects.filter(d => d.kind === "ebsame"), {x1:"x1", x2:"x2", y1:"y1", y2:"y2",
           fill: tok("--eb"), fillOpacity: 0.10,
         }),
+        Plot.rect(delivRects, {x1:"x1", x2:"x2", y1:"y1", y2:"y2",
+          fill: tok("--eb"), fillOpacity: 0.12,
+          stroke: tok("--good"), strokeWidth: 1.4,
+        }),
         Plot.arrow(certArcs, {x1:"x1", y1:"y1", x2:"x2", y2:"y2",
           stroke: tok("--good"), strokeOpacity: 0.65, strokeWidth: 1.4, bend: 25, headLength: 7}),
         Plot.text(certArcs, {x:"x2", y: () => 6, text: () => "📥", fontSize: 11}),
+        Plot.text(certArcs, {x:"x2", y: () => 6, fontSize: 9,
+          dy: (_d, i) => 12 + (i % 2) * 10,
+          fill: tok("--good"),
+          text: d => d.n ? d.n.toLocaleString() : ""}),
       ],
     });
     const el = document.getElementById("panel-comp"); el.innerHTML=""; el.append(fig);
