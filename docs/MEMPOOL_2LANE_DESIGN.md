@@ -92,6 +92,18 @@ retained; and the prototype has no EB-abandonment path (one EB in flight, it sta
 certified), so nothing is lost by stripping early. The old rule — keep txs until
 certification lest an uncertified EB lose them — is superseded.
 
+**UPDATED (2026-07-22, the readmission):** the strip alone made a missed
+certification a permanent loss — a superseded EB's txs sat in no mempool any
+more (observed live: ~half the EBs stranded under back-to-back announcements,
+3,709 txs in one morning). The strip now carries its own inverse: when a new
+announcement replaces one that never applied, the replaced EB's txs are
+offered back to the mempool (decoded from the closure the node already
+stores, `txFromLeiosBytes`). The mempool's own admission is the arbiter — a
+block that did certify re-admits nothing (inputs already spent), a stranded
+one re-enters and rides a later EB. A probe sample spread across the closure
+keeps the certified-case cost bounded. A certification miss is a delay again,
+not a loss.
+
 ## InternalState — two physical lanes, one chained ledger order
 
 Today (`Impl/Common.hs:104`) `InternalState` has ONE `isTxs`, ONE `isLedgerState`, ONE `isCapacity`,
