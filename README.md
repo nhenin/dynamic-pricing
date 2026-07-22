@@ -167,12 +167,14 @@ Everything is on the page, in plain language, but the short tour:
 ## How this maps to the CIP
 
 This prototype backs the [Transaction Urgency Signalling CIP](https://github.com/input-output-hk/tiered-pricing/blob/main/docs/phase-2/CIP-urgency-signalling/README.md).
-The CIP and this repo grew their own vocabularies. The mapping:
+The dashboard speaks the CIP's vocabulary (standard lane, max fee,
+announcement threshold). The code keeps its original internal names — the
+mapping, for anyone reading the diffs:
 
-| The CIP says | This repo says |
+| The CIP (and the dashboard) say | The code says |
 |---|---|
-| standard lane | optimistic / patient lane |
-| max fee | bid, fee cap |
+| standard lane | `Optimistic` (inclusion strategy), the patient lane |
+| max fee | `bidFee`, fee cap |
 | EB announcement threshold | min-fill rule |
 
 The prototype runs the CIP's recommended construction: target utilisation
