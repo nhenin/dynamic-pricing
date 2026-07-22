@@ -235,7 +235,7 @@ details.subsec:has(.subtag.live) > summary{background:rgba(239,68,68,.08)}
 details.subsec > summary::-webkit-details-marker{display:none}
 details.subsec > summary::after{content:"▾";float:right;color:var(--muted);transition:transform .15s}
 details.subsec:not([open]) > summary::after{transform:rotate(-90deg)}
-details.subsec[open] > summary{border-bottom:1.5px solid inherit}
+details.subsec[open] > summary{border-bottom:1.5px solid var(--border)}
 details.subsec > *:not(summary){margin-left:12px;margin-right:12px}
 details.subsec > *:not(summary):first-of-type{margin-top:12px}
 details.subsec > *:not(summary):last-child{margin-bottom:12px}
@@ -401,7 +401,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           <rect x="234" y="160" width="296" height="66" rx="16" fill="var(--optimistic)" fill-opacity="0.12" stroke="var(--optimistic)" stroke-width="2"></rect>
           <text x="382" y="186" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--optimistic)">STANDARD · the patient lane</text>
           <text x="382" y="202" text-anchor="middle" font-size="10" fill="var(--text)">the big certified block — ~133× the space</text>
-          <text x="382" y="216" text-anchor="middle" font-size="10" fill="var(--muted)">applied a couple of blocks later, once certified</text>
+          <text x="382" y="216" text-anchor="middle" font-size="10" fill="var(--muted)">applied at the next block, once certified</text>
           <rect x="292" y="238" width="180" height="22" rx="11" fill="none" stroke="var(--optimistic)" stroke-width="1.2" stroke-dasharray="4 3"></rect>
           <text x="382" y="253" text-anchor="middle" font-size="10" fill="var(--optimistic)">price: low · rests near the floor</text>
           <path d="M382,236 L382,228" stroke="var(--optimistic)" stroke-width="1.2" stroke-dasharray="3 3" fill="none"></path>
@@ -480,8 +480,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       of pools certifies it. Over a hundred times the bytes per round (the endorser block alone carries ~133× a ranking
       block), without touching the clock. One refinement: an endorser block is only issued when it is worth
       certifying — at least <strong>half a ranking block full</strong>; below that, the patient lane simply
-      <em>pools</em> its transactions for the next round (the live cards show it as &ldquo;pooling — below min
-      fill&rdquo;).</p>
+      <em>pools</em> its transactions for the next round (the live cards show it as &ldquo;pooling — below the announcement threshold&rdquo;).</p>
     <div class="loop-wrap">
       <svg viewBox="0 0 760 212" width="760" height="212" role="img" aria-label="block anatomy: one round carries a ranking block and an endorser block">
         <defs>
@@ -553,7 +552,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       lane pools instead.)</p>
     <div style="font-size:12px; line-height:1.7">
       <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--good);margin-right:7px"></span><strong style="color:var(--good)">certified</strong> — the normal case, usually at the next block (the protocol enforces a gap of at least 10 slots before the certificate can land).</div>
-      <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--shed);margin-right:7px"></span><strong>superseded</strong> — never certified, but a <em>later</em> EB was: the old one is discarded and its tx simply ride in the next EB. Routine, not a loss.</div>
+      <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--shed);margin-right:7px"></span><strong>superseded</strong> — never certified, but a <em>later</em> EB was: the old one is discarded and its txs are offered back to every mempool. What still clears the quote rides a later EB; what the climbed price refuses is counted in the journal as priced out on return.</div>
       <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--live);margin-right:7px"></span><strong style="color:var(--live)">stalled</strong> — no later EB certifies either: the whole patient lane freezes until votes return (the ⚡ <em>certification miss</em> scenario shows this live).</div>
     </div>
   </div>
@@ -727,7 +726,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           <mtext>&nbsp;&nbsp;cut off at ±6.25%</mtext>
         </math>
         <div class="legend-line" style="margin-top:8px">
-          <b>fullness</b> = bytes the lane's block carried ÷ the lane's own byte budget · the ½ is the half-full
+          <b>fullness</b> = bytes carried ÷ the lane's own byte budget, read over the lane's window of recent rounds (5 fast / 20 patient) · the ½ is the half-full
           target · the ÷8 and the ±6.25% cut-off both come from the damping parameter <b>D&nbsp;=&nbsp;16</b> ·
           <b>floor</b> = 44 lovelace/byte.
         </div>
@@ -750,9 +749,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         block producer's luck.</div>
       <div>↩️ <strong>Refund</strong> — max fee − quote, the unused headroom — is credited back to the transaction's
         <strong>refund account</strong> after the block. The max fee is a ceiling, not a price: this demo's senders cap at the
-        live quote × their <span data-term="fee buffer">fee buffer</span> (a cockpit slider), so the refund is at least
-        the buffer margin — an urgent rider delivered by a certified endorser block is charged the standard quote, and
-        the urgent-to-standard drop comes back too.</div>
+        live quote × their <span data-term="fee buffer">fee buffer</span> (a cockpit slider), and the refund is whatever
+        of that headroom the delivering block's quote leaves unspent — the full buffer margin when the price held still,
+        less when it climbed while the tx waited, plus the whole urgent-to-standard drop for a rider delivered by a
+        certified endorser block.</div>
     </div>
     <p class="hint" style="margin-top:8px">The catch worth knowing: the split only runs for a transaction that <em>names</em>
       a refund account (a registered staking account — this demo uses one of the devnet's genesis delegators). A transaction
@@ -979,13 +979,15 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       priced <span data-term="discrimination floor">independently</span> — no cross-lane floor — so brief quote
       crossings are possible and permitted. The block bars show <strong>% of each
       lane's byte budget</strong> — the true fullness (capacity is bytes, and a handful of fat scenario txs can fill a
-      block that would look empty in tx counts). The dashed line is the controller's half-full target. Prices are shown in <strong>₳ for a 1-KB transaction</strong>
+      block that would look empty in tx counts). The dashed line is the controller's half-full target, and the
+      announcement-threshold line on the standard panel marks 45&nbsp;KB of EB payload — this queue plus the urgent
+      riders — below which the round pools and no endorser block issues. Prices are shown in <strong>₳ for a 1-KB transaction</strong>
       (the ledger's native unit is <span data-term="lovelace">lovelace</span> per <span data-term="byte">byte</span> —
       ₳ 1 = 1,000,000 lovelace).</p>
     <div class="legend">
       <span><span class="sw" style="background:var(--urgent)"></span>urgent quote (fast lane / RB)</span>
       <span><span class="sw" style="background:var(--optimistic)"></span>standard quote (patient lane / EB)</span>
-      <span><span class="sw" style="background:var(--urgent); opacity:.18"></span>urgent queue (pale area — its own scale, right-hand ticks)</span>
+      <span><span class="sw" style="background:var(--urgent); opacity:.18"></span>urgent queue (pale area, dashed edge — its own hidden scale; the live count sits at the right)</span>
       <span><span class="sw" style="background:var(--optimistic); opacity:.25"></span>standard queue (dashed)</span>
       <span id="ada-note" style="color:var(--muted)"></span>
     </div>
@@ -1001,7 +1003,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         <span><span class="sw" style="background:var(--rb)"></span>RB · urgent tx (applied instantly)</span>
         <span><span class="sw" style="background:var(--eb)"></span>EB · standard tx + urgent riders · certified</span>
         <span><span class="sw" style="background:var(--eb); opacity:.3; outline:1.5px dashed var(--eb)"></span>EB awaiting votes (doesn't count yet)</span>
-        <span><span class="sw" style="background:var(--shed); opacity:.4; outline:1.5px dashed var(--shed)"></span>EB superseded (replaced before certification — its tx moved to a later block)</span>
+        <span><span class="sw" style="background:var(--shed); opacity:.4; outline:1.5px dashed var(--shed)"></span>EB superseded (replaced before certification — its txs are offered back: most ride a later block, the priced-out rest is counted in the journal)</span>
         <span><span class="sw" style="background:var(--live); opacity:.25; outline:1.5px dashed var(--live)"></span>EB certification stalled (nothing certifies — see the Certification-miss scenario)</span>
         <span><span class="sw" style="background:var(--eb); opacity:.1"></span>ghost — the same in-flight EB re-announced (one cargo, shown once per round; only the applied one counts)</span>
         <span><span class="sw" style="background:var(--good); opacity:.6"></span>→ 📥 certification arrow — from the block that announced an EB to the block whose certificate makes it count; the arrow's length IS the certification wait. The delivering block wears the certified EB's mass as a green-edged outline with its tx count — the column looks light, but it is the round where those txs land</span>
@@ -1324,7 +1326,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       yTicks: undefined,
       liveQ: lqLive.qo, withAxis: true,
       queueThresholdBytes: RB_BYTE_BUDGET / 2,
-      queueThresholdLabel: "announcement threshold (45 KB) — EB payload (this queue + urgent riders) below this: the round pools, no EB issues",
+      queueThresholdLabel: "announcement threshold · 45 KB",
     });
 
     host.innerHTML = "";
@@ -1365,6 +1367,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   }
   function equationReader(){
     const host = document.getElementById("eq");
+    if (!host) return;   // panel retired; keep the reader crash-free if rewired
     if (all.length < 2){ host.innerHTML = "<div class='why'>waiting for a second block to compare…</div>"; return; }
     const a = all[all.length-2], b = all[all.length-1];
     const e = explainStep(a.urgent, b.urgent);
@@ -1385,9 +1388,11 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   }
 
   function queueChart(){
+    const host = document.getElementById("panel-queue");
+    if (!host) return;   // panel retired; keep the chart crash-free if rewired
     const t = { axis: tok("--axis"), grid: tok("--grid"), text: tok("--text") };
     const data = view();
-    if (!data.length){ document.getElementById("panel-queue").innerHTML = ""; return; }
+    if (!data.length){ host.innerHTML = ""; return; }
     const now = data[data.length-1];
     const yMax = Math.max(10, Math.max(...data.map(b=>Math.max(b.qu||0, b.qo||0))) * 1.2);
     const fig = Plot.plot({
@@ -1465,8 +1470,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 
   // Certification status of each block's EB. Primary key is the ebHash the
   // tailer attached to the block record; when trace ordering left it null, fall
-  // back to zipping the two chronological sequences (nth EB-carrying block <->
-  // nth forged EB), cross-checked against the hash whenever both are present.
+  // Hash-only join: each EB-carrying block is matched to its endorser block
+  // by hash, so old rows never flicker as the two feeds grow out of step.
   let ebJoin = new Map();
   function computeEbJoin(){
     // Hash-only join: stable across polls (a positional zip would shift whenever
@@ -1475,7 +1480,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const ebs = (leiosStatus && leiosStatus.ebs) || [];
     const byHash = new Map(ebs.map(e => [e.hash, e]));
     for (const b of all){
-      if (!(b.eb > 0)) continue;
+      if (!(ebTxs(b) > 0)) continue;
       const e = b.ebHash ? byHash.get(b.ebHash) : undefined;
       let st = "unknown";
       if (e){
@@ -1494,8 +1499,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       ebJoin.set(b.i, st);
     }
   }
+  const ebTxs = b => (b && b.eb || 0) + (b && b.ebUrgent || 0);
   function ebStatus(b){
-    if (!b || !b.eb) return null;                       // no endorser block this round
+    if (!b || !ebTxs(b)) return null;                   // no endorser block this round
     return ebJoin.get(b.i) || "unknown";
   }
 
@@ -1524,15 +1530,17 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   const tipRow = (color, label, html) =>
     `<div class="tiprow"><span class="sw" style="background:${color}"></span>`+
     `<span class="tiplane" style="color:${color}">${label}</span><span>${html}</span></div>`;
-  const nodeBadge = b => b.node ? ` <span class="hint" style="margin:0">· forged by <strong>${b.node}</strong></span>` : "";
+  const NODE_COLORS = {node1:"#3b82f6", node2:"#a855f7", node3:"#ec4899"};
+  const nodeColor = n => NODE_COLORS[n] || "var(--muted)";
+  const nodeBadge = b => b.node ? ` <span class="hint" style="margin:0">· forged by <strong style="color:${nodeColor(b.node)}">${b.node}</strong></span>` : "";
   function stepFromFullness(pct){
     if (pct == null) return null;
     const step = Math.max(-25, Math.min(25, (pct/100 - 0.5) / 2 * 100));
-    return `ran ${Math.round(pct)}% full → next step ${step > 0 ? "+" : ""}${step.toFixed(1)}%`;
+    return `ran ${pct < 10 ? pct.toFixed(1) : Math.round(pct)}% full → next step ${step > 0 ? "+" : ""}${step.toFixed(1)}%`;
   }
   function priceTipHTML(b){
     const su = b.rbBytes != null ? ` · ${stepFromFullness(rbPct(b))}` : "";
-    const so = b.ebBytes != null && b.eb ? ` · ${stepFromFullness(ebPct(b))}` : "";
+    const so = b.ebBytes != null && ebTxs(b) ? ` · ${stepFromFullness(ebPct(b))}` : "";
     return `<div class="tiphead">block #${b.i}${nodeBadge(b)}</div>`+
       tipRow(tok("--urgent"), "URGENT", `<strong>${adaKb(b.urgent)}</strong> · ${(b.qu??0).toLocaleString()} tx waiting · ${b.rb} tx in block${su}`)+
       tipRow(tok("--optimistic"), "STANDARD", `<strong>${adaKb(b.optimistic)}</strong> · ${(b.qo??0).toLocaleString()} tx waiting · ${b.eb} tx${b.ebUrgent?` + ${b.ebUrgent} riders`:``} in block${so}`);
@@ -1610,14 +1618,15 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const st = ebStatus(b);
     const idx = all.findIndex(r => r.i === b.i);
     const pb = idx > 0 ? all[idx-1] : null;
-    const reShown = pb && b.eb > 0 && b.eb === pb.eb && b.ebBytes === pb.ebBytes
+    const reShown = pb && ebTxs(b) > 0 && ebTxs(b) === ebTxs(pb) && b.ebBytes === pb.ebBytes
       && (!b.ebHash || b.ebHash === pb.ebHash) && st !== "certified";
-    const cert = !b.eb ? "" :
+    const cert = !ebTxs(b) ? "" :
       reShown ? ` · <span style="color:var(--muted)">⟳ the same endorser block, still in flight — not counted again</span>` :
       st === "certified" ? ` · <span style="color:var(--good)">✓ certified later — counts when its certificate lands</span>` :
       st === "awaiting" ? ` · <span style="color:var(--live)">⏳ awaiting votes</span>` :
       st === "superseded" ? ` · <span style="color:var(--shed)">↷ superseded</span>` :
-      st === "missed" ? ` · <span style="color:var(--live)">✖ certification stalled</span>` : "";
+      st === "missed" ? ` · <span style="color:var(--live)">✖ certification stalled</span>` :
+      st === "unknown" ? ` · <span style="color:var(--muted)">certification status unknown</span>` : "";
     const est = pctIsReal(b) ? "" : " (est.)";
     const landed = b.certIn ? `<div style="color:var(--good);font-size:11px;margin-top:2px">📥 a certificate landed here — that endorser block's ${(b.certIn.numTxs||0).toLocaleString()} tx count in THIS block's pricing</div>` : "";
     return `<div class="tiphead">block #${b.i}${nodeBadge(b)}</div>`+
@@ -1684,13 +1693,13 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       // The SAME in-flight endorser block gets re-announced round after round
       // while it waits — one cargo, many bars. Draw the repeats as ghosts, or
       // a congested stretch reads as "a full EB delivered every block".
-      const reShown = prevB && b.eb > 0 && b.eb === prevB.eb && b.ebBytes === prevB.ebBytes
+      const reShown = prevB && ebTxs(b) > 0 && ebTxs(b) === ebTxs(prevB) && b.ebBytes === prevB.ebBytes
         && (!b.ebHash || b.ebHash === prevB.ebHash) && st !== "certified";
       if (b.rb) rects.push({x1:b.i-0.42, x2:b.i-0.01, y1:0, y2:rbPct(b), kind:"rb", i:b.i});
-      if (b.eb) rects.push({x1:b.i+0.01, x2:b.i+0.42, y1:0, y2:ebPct(b),
+      if (ebTxs(b)) rects.push({x1:b.i+0.01, x2:b.i+0.42, y1:0, y2:ebPct(b),
                             kind: reShown ? "ebsame"
-                              : st === "awaiting" ? "ebwait" : st === "missed" ? "ebmiss" : st === "superseded" ? "ebsuper" : "eb", i:b.i});
-      if (b.ebHash || b.eb) prevB = b;
+                              : st === "awaiting" ? "ebwait" : st === "missed" ? "ebmiss" : st === "superseded" ? "ebsuper" : st === "unknown" ? "ebsame" : "eb", i:b.i});
+      if (b.ebHash || ebTxs(b)) prevB = b;
     }
     // The certification pipeline, drawn: an arc from the block that ANNOUNCES
     // an endorser block to the block whose certificate makes it COUNT. The
@@ -1706,7 +1715,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       if (src) certArcs.push({x1: src.i, y1: Math.min(100, ebPct(src)) + 3, x2: b.i, y2: 12, i: b.i, n});
       // Only when the column's EB slot is free — a block that both carries
       // the certificate and announces its own EB keeps its announced bar.
-      if (src && !b.eb) delivRects.push({x1: b.i + 0.01, x2: b.i + 0.42, y1: 0, y2: ebPct(src), i: b.i});
+      if (src && !ebTxs(b)) delivRects.push({x1: b.i + 0.01, x2: b.i + 0.42, y1: 0, y2: ebPct(src), i: b.i});
     }
     const FILL = { rb: tok("--rb"), eb: tok("--eb"), ebwait: tok("--eb") };
     const xDom = [blocks[0].i - 0.5, Math.max(blocks[blocks.length-1].i, blocks[0].i + 39) + 0.5];
@@ -1748,9 +1757,11 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         Plot.arrow(certArcs, {x1:"x1", y1:"y1", x2:"x2", y2:"y2",
           stroke: tok("--good"), strokeOpacity: 0.65, strokeWidth: 1.4, bend: 25, headLength: 7}),
         Plot.text(certArcs, {x:"x2", y: () => 6, text: () => "📥", fontSize: 11}),
-        Plot.text(certArcs, {x:"x2", y: () => 6, fontSize: 9,
-          dy: (_d, i) => 12 + (i % 2) * 10,
-          fill: tok("--good"),
+        Plot.text(certArcs.filter((_, i) => i % 2 === 0), {x:"x2", y: () => 6, dy: 12,
+          fontSize: 9, fill: tok("--good"),
+          text: d => d.n ? d.n.toLocaleString() : ""}),
+        Plot.text(certArcs.filter((_, i) => i % 2 === 1), {x:"x2", y: () => 6, dy: 22,
+          fontSize: 9, fill: tok("--good"),
           text: d => d.n ? d.n.toLocaleString() : ""}),
       ],
     });
@@ -1780,18 +1791,37 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const du = prev ? b.urgent - prev.urgent : 0;
     const dm = prev ? b.optimistic - prev.optimistic : 0;
     const pct = (d, base) => base ? ` (${d>0?"+":""}${Math.round(100*d/base)}%)` : "";
+    const kb = n => n == null ? "?" : (n/1000).toLocaleString(undefined,{maximumFractionDigits:1}) + " KB";
+    const mb = n => n == null ? "?" : (n/1e6).toLocaleString(undefined,{maximumFractionDigits:2}) + " MB";
     const st = ebStatus(b);
-    const ebLine = !b.eb
-      ? `no endorser block this round`
+    const total = ebTxs(b);
+    // Where this block's announced EB eventually counted (certificate landing).
+    const certAt = b.ebHash ? all.find(a => a.i > b.i && a.certIn && a.certIn.hash === b.ebHash) : null;
+    const ebWait = certAt && certAt.slot != null && b.slot != null ? `${certAt.slot - b.slot} slots later` : null;
+    const hash = h => h ? ` <span class="hint" style="margin:0">(eb ${h})</span>` : ``;
+    const ebLine = !total
+      ? `no endorser block this round — the merged payload stayed below the 45 KB announcement threshold, so the round pools`
       : st === "certified"
-        ? `<span style="color:var(--eb)">✓ certified</span> — its ${b.eb} tx count` + (b.ebHash?` <span class="hint" style="margin:0">(eb ${b.ebHash})</span>`:``)
+        ? `<span style="color:var(--good)">✓ certified</span>${certAt ? ` — counts at <strong>block #${certAt.i}</strong>${ebWait ? ` (${ebWait})` : ``}` : ``}${hash(b.ebHash)}`
         : st === "awaiting"
-          ? `<span style="color:var(--live)">⏳ awaiting committee votes</span> — its ${b.eb} tx do not count yet` + (b.ebHash?` <span class="hint" style="margin:0">(eb ${b.ebHash})</span>`:``)
+          ? `<span style="color:var(--live)">⏳ awaiting committee votes</span> — its ${total.toLocaleString()} tx do not count yet${hash(b.ebHash)}`
           : st === "superseded"
-            ? `<span style="color:var(--shed)">↷ superseded</span> — a newer endorser block replaced it before its certificate landed; its ${b.eb} tx were carried by a later block` + (b.ebHash?` <span class="hint" style="margin:0">(eb ${b.ebHash})</span>`:``)
+            ? `<span style="color:var(--shed)">↷ superseded</span> — replaced before its certificate landed; every node offers its txs back to the mempool — what still clears the quote rides a later endorser block, the rest is priced out on return${hash(b.ebHash)}`
             : st === "missed"
-              ? `<span style="color:var(--live)">✖ certification stalled</span> — nothing is certifying; its ${b.eb} tx are stuck waiting` + (b.ebHash?` <span class="hint" style="margin:0">(eb ${b.ebHash})</span>`:``)
-              : `certification status unknown`;
+              ? `<span style="color:var(--live)">✖ certification stalled</span> — nothing certifies (the committee is silent); its ${total.toLocaleString()} tx wait aboard${hash(b.ebHash)}`
+              : `certification status unknown${hash(b.ebHash)}`;
+    // What a certificate delivers INTO this block.
+    const src = b.certIn && b.certIn.hash ? all.slice(0, idx).reverse().find(a => a.ebHash === b.certIn.hash) : null;
+    const delivered = !b.certIn ? "" :
+      `③ <span style="color:var(--good)">📥 delivered here: ${(b.certIn.numTxs||0).toLocaleString()} tx</span> — the endorser block${src ? ` announced at <strong>block #${src.i}</strong>` : ``}${src && src.slot != null && b.slot != null ? ` (${b.slot - src.slot} slots ago)` : ``} counts in THIS block's pricing; its urgent riders are charged the standard quote, the excess refunded <span class="hint" style="margin:0">(eb ${b.certIn.hash})</span><br>`;
+    const deliveryNote = b.certIn && b.rb
+      ? ` · <span class="hint" style="margin:0">a certificate rides this block, so these txs settle at the standard quote too (delivery pricing)</span>`
+      : ``;
+    const pool = b.pool || {};
+    const poolLine = pool.quBytePct != null
+      ? ` · pools: urgent ${pool.quBytePct}% of space / ${pool.quTimePct}% of its diffusion window · standard ${pool.qoBytePct}% / ${pool.qoTimePct}%`
+      : ``;
+    const prem = r => "₳ " + Math.max(0, (r - CTRL.floor) * 1000 / 1e6).toFixed(3);
     const gap = (b.slot != null && prev && prev.slot != null) ? b.slot - prev.slot : null;
     const slotInfo = b.slot != null
       ? ` <span class="hint" style="margin:0">· slot ${b.slot.toLocaleString()}${gap != null ? ` (+${gap} since #${prev.i})` : ""}</span>`
@@ -1801,12 +1831,14 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       `<div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:6px">`+
       `<strong>block #${b.i}</strong>${slotInfo}${nodeBadge(b)}`+
       `<button type="button" class="scenario" style="padding:2px 10px" onclick="this.parentElement.parentElement.style.display='none'">close</button></div>`+
-      `<div style="margin-top:4px; line-height:1.7">`+
-      `① <span style="color:var(--rb)">fast lane: ${b.rb} urgent tx</span> — applied first, instantly<br>`+
-      `② <span style="color:var(--eb)">patient lane: ${b.eb} standard tx${b.ebUrgent?` + ${b.ebUrgent} urgent riders`:``}</span> — ${ebLine}<br>`+
-      `③ reprice: urgent ${prev?adaKb(prev.urgent)+" → ":""}${adaKb(b.urgent)}${pct(du, prev?.urgent)} · `+
-      `standard ${prev?adaKb(prev.optimistic)+" → ":""}${adaKb(b.optimistic)}${pct(dm, prev?.optimistic)}<br>`+
-      `④ left waiting: ${b.qu ?? "–"} urgent tx · ${b.qo ?? "–"} standard tx</div>`;
+      `<div style="margin-top:4px; line-height:1.8">`+
+      `① <span style="color:var(--rb)">fast lane: ${b.rb} urgent tx</span> · ${kb(b.rbBytes)} = <strong>${rbPct(b)}%</strong> of the 90,112-byte budget — applied first, instantly${deliveryNote}<br>`+
+      `② <span style="color:var(--eb)">endorser block: ${total.toLocaleString()} tx</span>${total ? ` (${b.eb.toLocaleString()} standard + ${(b.ebUrgent||0).toLocaleString()} urgent riders) · ${mb(b.ebBytes)} = <strong>${ebPct(b)}%</strong> of the 12 MB budget` : ``} — ${ebLine}<br>`+
+      delivered+
+      `${delivered ? "④" : "③"} reprice: urgent ${prev?adaKb(prev.urgent)+" → ":""}<strong>${adaKb(b.urgent)}</strong>${pct(du, prev?.urgent)} · `+
+      `standard ${prev?adaKb(prev.optimistic)+" → ":""}<strong>${adaKb(b.optimistic)}</strong>${pct(dm, prev?.optimistic)}`+
+      ` <span class="hint" style="margin:0">· native ${b.urgent} / ${b.optimistic} lovelace per byte · 1 KB premium: urgent ${prem(b.urgent)}, standard ${prem(b.optimistic)}</span><br>`+
+      `${delivered ? "⑤" : "④"} left waiting: ${(b.qu ?? 0).toLocaleString()} urgent tx · ${(b.qo ?? 0).toLocaleString()} standard tx${poolLine}</div>`;
   }
 
   // ---- loop diagram: highlight the phase that best matches the recent data ----
@@ -1899,7 +1931,11 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   function laneTxBytes(countField, bytesField){
     const last = all.slice(-6);
     let n = 0, bytes = 0;
-    for (const x of last){ if (x[countField] > 0 && x[bytesField] != null){ n += x[countField]; bytes += x[bytesField]; } }
+    for (const x of last){
+      // The EB is the FIFO merge: its bytes cover standard txs AND riders.
+      const cnt = countField === "eb" ? (x.eb || 0) + (x.ebUrgent || 0) : x[countField];
+      if (cnt > 0 && x[bytesField] != null){ n += cnt; bytes += x[bytesField]; }
+    }
     return n ? bytes / n : 2300;
   }
   // Durations render through the journals' fmtDur (defined below) so every
@@ -2033,11 +2069,12 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     computeEbJoin();
     const lqNow = liveQueues() || {qu: b.qu ?? 0, qo: b.qo ?? 0, est: false};
     const st = ebStatus(b);
-    const cert = !b.eb ? "" :
+    const cert = !ebTxs(b) ? "" :
       st === "certified" ? ` · <span style="color:var(--good)">✓ certified</span>` :
       st === "awaiting" ? ` · <span style="color:var(--live)">⏳ awaiting votes</span>` :
       st === "superseded" ? ` · <span style="color:var(--shed)">↷ superseded</span>` :
-      st === "missed" ? ` · <span style="color:var(--live)">✖ certification stalled</span>` : "";
+      st === "missed" ? ` · <span style="color:var(--live)">✖ certification stalled</span>` :
+      st === "unknown" ? ` · <span style="color:var(--muted)">certification status unknown</span>` : "";
     const uWait = urgentWait(lqNow.qu), oWait = optimisticWait(lqNow.qo, st);
     const grid = document.getElementById("nowgrid");
     // Build the cards once; every later tick only patches text and bar widths
@@ -2203,7 +2240,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       const certLanded = b.certIn
         ? ` · <span style="color:var(--good)">📥 certificate landed — the ${(b.certIn.numTxs||0).toLocaleString()}-tx endorser block COUNTS in this block's pricing</span>`
         : "";
-      const ebBadge = (!b.eb ? "" :
+      const ebBadge = (!ebTxs(b) ? "" :
         st === "certified" ? ` · <span style="color:var(--eb)">EB ✓ certified later — counts when its certificate lands</span>` :
         st === "awaiting" ? (sameEb
           ? ` · <span style="color:var(--live)">EB ⏳ still the same endorser block, awaiting votes</span>`
@@ -2218,7 +2255,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           ? `<span style="color:var(--eb)">EB — the same endorser block, still in flight</span>`
           : `<span style="color:var(--eb)">EB ${ebPct(b)}% full · ${b.eb} standard tx${b.ebUrgent?` + ${b.ebUrgent} riders`:``}</span>`)+
         ` &nbsp;→&nbsp; reprice: urgent ${adaKb(b.urgent)}${arrow(du) ? " " + arrow(du) : ""} · standard ${adaKb(b.optimistic)}${arrow(dm) ? " " + arrow(dm) : ""}`+
-        ` <span class="hint" style="margin:0">(${verdictU}; waiting: ${(b.qu ?? 0).toLocaleString()} urgent / ${(b.qo ?? 0).toLocaleString()} patient)</span>${ebBadge}`+
+        ` <span class="hint" style="margin:0">(urgent: ${verdictU}; waiting: ${(b.qu ?? 0).toLocaleString()} urgent / ${(b.qo ?? 0).toLocaleString()} standard)</span>${ebBadge}`+
         `</div>`);
     }
     host.innerHTML = rows.join("");
@@ -2260,7 +2297,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const ok = bid >= reqFee;
     statusEl.className = "evstatus " + (ok ? "alive" : "dead");
     statusEl.textContent = ok ? "✅ In the mempool — your max fee still covers the quote" : "💀 EVICTED — the quote climbed above your max fee";
-    detailEl.innerHTML = `Your max fee ${ada(bid)} covers the ${evLane} lane while its quote ≤ `+
+    detailEl.innerHTML = `Your max fee ${ada(bid)} covers the ${laneDisp(evLane)} lane while its quote ≤ `+
       `<strong>${adaKb(threshold)}</strong> per KB. Live quote: `+
       `<strong>${adaKb(quote)}</strong> — `+
       (ok ? `headroom +${threshold>0?Math.round(100*(threshold-quote)/threshold):0}%.`
@@ -2282,7 +2319,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       `<div class="txstep"><div class="n">your tx · standard</div><div class="big">spends UTxO ${id}</div><div class="small">admitted first, waiting in the EB lane</div></div>`+
       `<div class="txstep"><div class="n">urgent tx · newcomer</div><div class="big">spends UTxO ${id}</div><div class="small">same input, arrives later</div></div>`+
       `<div class="txstep"><div class="n">checked vs the whole mempool</div><div class="big">input already taken</div><div class="small">your standard tx holds UTxO ${id}</div></div>`+
-      `<div class="txstep shed flash"><div class="n">urgent tx</div><div class="big">⛔ rejected</div><div class="small">first-come — an admitted tx is never evicted</div></div>`+
+      `<div class="txstep shed flash"><div class="n">urgent tx</div><div class="big">⛔ rejected</div><div class="small">first-come — a conflicting newcomer never displaces an admitted tx</div></div>`+
       `<div class="txstep"><div class="n">your tx</div><div class="big" style="color:var(--optimistic)">✅ safe</div><div class="small">your standard tx stays in the EB</div></div>`;
     document.getElementById("ev-conflict-note").textContent =
       `Sent ${evConflictCount} conflicting urgent tx — every one rejected at submit; the admitted standard tx is protected. No price involved.`;
@@ -2654,12 +2691,13 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     if (g.orphaned) parts.push(`⛓ ${g.orphaned.toLocaleString()} orphaned`);
     if (g.flushed) parts.push(`🚿 ${g.flushed.toLocaleString()} flushed`);
     if (g.stranded) parts.push(`🏝 ${g.stranded.toLocaleString()} stranded`);
+    if (g.returned) parts.push(`💸↩ ${g.returned.toLocaleString()} priced out on return`);
     return parts;
   }
   function journalCounts(g){
     if (!g) return `<span class="hint">no txs yet</span>`;
     const walk = g.shed ? ` · walked away ${g.shed.toLocaleString()}` : "";
-    const dropped = (g.evicted || 0) + (g.orphaned || 0) + (g.flushed || 0) + (g.stranded || 0);
+    const dropped = (g.evicted || 0) + (g.orphaned || 0) + (g.flushed || 0) + (g.stranded || 0) + (g.returned || 0);
     return `sent ${g.sent.toLocaleString()} ` +
       `(<span style="color:var(--urgent)">${g.urgent.toLocaleString()} urgent</span> / ` +
       `<span style="color:var(--optimistic)">${g.optimistic.toLocaleString()} standard</span>${walk}) · ` +
@@ -2812,6 +2850,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           g.flushed.toLocaleString() + laneSplit(g.flushedUrgent, g.flushedOptimistic), "var(--live)") : "") +
         ((g.stranded || 0) ? cell("🏝 stranded",
           g.stranded.toLocaleString() + laneSplit(g.strandedUrgent, g.strandedOptimistic), "var(--live)") : "") +
+        ((g.returned || 0) ? cell("💸↩ priced out on return",
+          g.returned.toLocaleString() + laneSplit(g.returnedUrgent, g.returnedOptimistic), "var(--live)") : "") +
         (showRefused ? cell("🚪 not admitted", refused.toLocaleString(), "var(--live)") : "") +
         `</div>` +
         `<p class="hint" style="margin:0 0 10px">These are the txs the simulated crowd sent while this setting was active.
@@ -2821,6 +2861,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         ⛓ Orphaned = chained behind an evicted tx, so it could never forge.
         🚿 Flushed = removed by hand (the presenter's flush command) — a demo reset, not the mechanism.` +
         (g.stranded ? ` 🏝 Stranded = stripped for an endorser block that never got its certificate — gone from every mempool, never settled.` : "") +
+        (g.returned ? ` 💸↩ Priced out on return = its endorser block missed certification; when the mempool got it back, the quote had climbed past its max fee — the same verdict eviction would have delivered.` : "") +
         (showRefused ? ` 🚪 Not admitted = never let into the queue — usually a max fee already below the quote on arrival, or a payment whose parent tx had just been dropped.` : "") +
         `</p>`;
       if ((g.evicted || 0) + (g.orphaned || 0) > 0)
@@ -2885,9 +2926,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         ? ` Typical wait before the axe: <strong>${Math.round(waits[Math.floor(waits.length / 2)])} s</strong>` +
           ` (longest ${Math.round(waits[waits.length - 1])} s).`
         : "";
-      verdict = `<p class="hint" style="margin:4px 0 8px">Their bid caps ran <strong>${ada(Math.min(...bids))}–${ada(Math.max(...bids))}</strong>,
+      verdict = `<p class="hint" style="margin:4px 0 8px">Their max fees ran <strong>${ada(Math.min(...bids))}–${ada(Math.max(...bids))}</strong>,
         but by the time the climbing quote crossed them the lane wanted up to <strong>${ada(Math.max(...asked))}</strong>
-        for their size. A bid is a cap, not a promise of inclusion: when the published price outruns it, the tx is
+        for their size. The max fee is a ceiling, not a promise of inclusion: when the published price outruns it, the tx is
         re-checked at the new price and evicted — that is the mechanism rationing a full pool.${wait}</p>`;
     }
     // one line per (minute, lane): a wave of hundreds of identical lines says less
@@ -2903,8 +2944,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       const many = b.n > 1;
       const why = b.stage === "orphaned"
         ? (many ? "⛓ orphaned — their parents were evicted" : "⛓ orphaned — its parent was evicted")
-        : (many ? "💸 priced out — the quote outran their bids" : "💸 priced out — the quote outran the bid");
-      return `<div>${b.minute} · <strong>${b.n.toLocaleString()}</strong> ${b.lane} tx${many ? "s" : ""} ${why}</div>`;
+        : (many ? "💸 priced out — the quote outran their max fees" : "💸 priced out — the quote outran the max fee");
+      return `<div>${b.minute} · <strong>${b.n.toLocaleString()}</strong> ${laneDisp(b.lane)} tx${many ? "s" : ""} ${why}</div>`;
     }).join("");
     const newest = drops.filter(d => d.stage === "evicted").slice(-12).reverse();
     const genStartMs = (g.firstSeen || 0) * 1000;
@@ -2949,16 +2990,18 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const from = row.at.getTime(), to = end ? end.getTime() : Infinity;
     return all.filter(d => d.stage === "evicted" && d._when >= from && d._when <= to);
   }
+  // Stream lane ids are internal names; the page speaks the CIP's.
+  const laneDisp = l => l === "optimistic" ? "standard" : (l === "urgent" ? "urgent" : "unknown-lane");
   function evictedTxLine(d, genStartMs){
     const t = new Date(d._when).toLocaleTimeString();
     const ada = v => "₳" + (v/1e6).toLocaleString(undefined, {maximumFractionDigits: 2});
     const isBurst = runCfg && runCfg.t1Bid && d.bid === runCfg.t1Bid;
     const size = isBurst && runCfg.t1TxBytes ? runCfg.t1TxBytes : null;
     const perByte = size && d.bid != null && d.required != null
-      ? ` <span class="hint" style="margin:0">(per byte: ${Math.round(d.bid/size).toLocaleString()} offered vs ${Math.round(d.required/size).toLocaleString()} wanted)</span>`
+      ? ` <span class="hint" style="margin:0">(per byte, net of the fixed fee: ${Math.round((d.bid-155381)/size).toLocaleString()} offered vs ${Math.round((d.required-155381)/size).toLocaleString()} wanted)</span>`
       : "";
     const waited = d.waitedS != null
-      ? `waited <strong>${d.waitedS >= 60 ? Math.floor(d.waitedS/60) + " min " + Math.round(d.waitedS%60) + " s" : d.waitedS + " s"}</strong>`
+      ? `waited <strong>${(w => w >= 60 ? Math.floor(w/60) + " min " + (w%60) + " s" : w + " s")(Math.round(d.waitedS))}</strong>`
       : "wait unknown";
     // A wait that reaches back before the setting began is not a mystery: the
     // feeder retries an evicted tx (same txid), and the retry rode this
@@ -2968,8 +3011,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       : "";
     const numbers = d.bid != null && d.required != null
       ? `offered <strong>${ada(d.bid)}</strong>, the lane wanted <strong>${ada(d.required)}</strong> at the crossing`
-      : "the quote outran its bid";
-    return `<div>${t} · 💸 <code>${d.txid}</code> — ${d.lane} · ${waited} · ${numbers}${perByte}${resent}</div>`;
+      : "the quote outran its max fee";
+    return `<div>${t} · 💸 <code>${d.txid}</code> — ${laneDisp(d.lane)} · ${waited} · ${numbers}${perByte}${resent}</div>`;
   }
   async function pressureModalShow(row){
     const myTurn = ++modalSeq;
@@ -2994,7 +3037,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       const events = pressureDropEvents(row).slice(-40).reverse();
       const total = pressureDropCount(row);
       const what = row.mode === "type1"
-        ? "its txs dropped on price — evicted while waiting when the climbing quote outran their bids, or refused at the door once it already had"
+        ? "its txs dropped on price — evicted while waiting when the climbing quote outran their max fees, or refused at the door once it already had"
         : "its txs turned away at the door — the coin they spend is already held by an admitted tx (first-come)";
       html += `<div style="border-top:1px solid var(--border); padding-top:8px">` +
         `<strong style="color:var(--live)">${total.toLocaleString()} of the scenario's own txs ${row.mode === "type1" ? "priced out" : "turned away"}</strong>` +
@@ -3005,14 +3048,17 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           // and a wave of 400 identical lines tells the reader nothing.
           const buckets = new Map();
           for (const e of events){
-            const n = row.mode === "type1" ? (e.bidBelowQuote || e.n) : e.n;
+            const n = row.mode === "type1" ? (e.burstBidBelowQuote != null ? e.burstBidBelowQuote : (e.bidBelowQuote || e.n)) : e.n;
             const how = row.mode === "type2" ? "⛔ turned away — coin already held (first-come)"
-              : e.stage === "evicted" ? "💸 priced out while waiting — the quote outran the bid"
-              : "🚪 refused at the door — bid already below the quote";
+              : e.stage === "evicted" ? "💸 priced out while waiting — the quote outran the max fee"
+              : "🚪 refused at the door — max fee already below the quote";
             const minute = new Date(e._rx).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
             const k = minute + "|" + how;
             const b = buckets.get(k) || {minute, how, n: 0, urgent: 0, optimistic: 0};
-            b.n += n; b.urgent += e.urgent || 0; b.optimistic += e.optimistic || 0;
+            b.n += n;
+            // The lane fields count every tx the stage removed, not only the
+            // scenario's own — for the squeeze they would exceed the line.
+            if (row.mode !== "type1"){ b.urgent += e.urgent || 0; b.optimistic += e.optimistic || 0; }
             buckets.set(k, b);
           }
           return [...buckets.values()].map(b => {
@@ -3032,8 +3078,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           const newest = details.slice(-30).reverse();
           html += `<div style="border-top:1px solid var(--border); padding-top:8px; margin-top:8px">` +
             `<strong>The txs, one by one</strong> <span class="hint" style="margin:0">— the ledger's own verdict for each
-            (its bid cap vs what the lane charged for its size when the climbing quote crossed it), and how long it waited.</span>` +
-            `<div class="evlog" style="margin-top:6px">` + newest.map(evictedTxLine).join("") +
+            (its max fee vs what the lane charged for its size when the climbing quote crossed it), and how long it waited.</span>` +
+            `<div class="evlog" style="margin-top:6px">` + newest.map(d => evictedTxLine(d, row.at.getTime())).join("") +
             (details.length > newest.length ? `<div class="hint" style="margin:4px 0 0">…and ${details.length - newest.length} more in this window.</div>` : "") +
             (crowdHit ? `<div style="margin-top:6px"><strong>${crowdHit.toLocaleString()}</strong> of the <em>crowd's</em> txs were priced out by the same climb <span class="hint" style="margin:0">— the squeeze's collateral: ordinary senders paid the price of the burst's pressure.</span></div>` : "") +
             `</div></div>`;
@@ -3364,7 +3410,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     "rb":"Ranking Block — the fast-lane block forged every round. Carries only urgent transactions. Smaller, so its space is scarce and its price climbs faster.",
     "eb":"Endorser Block — the big block forged alongside the RB, applied only once the committee certifies it; only one is in flight at a time. Carries the first-come merge of standard transactions and the urgent overflow that missed the ranking block (its riders) in a 12 MB budget (~133× the RB), and is only issued when its payload is worth at least half a ranking block — below that the round pools. A rider delivered this way is charged the standard quote, the excess refunded.",
     "diffusion time":"How long a transaction is expected to take to spread across the network. Each lane's pool only admits a bounded total of it — when that budget is full, new senders are held back until the pool drains.",
-    "quote":"The current published per-byte rate for a lane — a live signal of how busy it is; it updates every block as demand changes. A transaction's full price = a small fixed part (the base fee) + this rate × its size; its max fee must cover that total to enter and to stay.",
+    "quote":"The current published per-byte rate for a lane — a live signal of how busy it is; it updates every block as demand changes. A transaction's full price = a small fixed part + this rate × its size; its max fee must cover that total to enter and to stay.",
     "max fee":"The fee a sender writes into their transaction, capping what they'll pay. The network charges the live quote at inclusion time and refunds the difference.",
     "fee ceiling":"The most a sender authorises in their transaction's fee field. If the quote climbs above it while waiting, the transaction is evicted and must be resubmitted higher.",
     "utilisation":"How full a lane's block was — the fraction of its space actually used. Above the ½ target the price rises; below it the price falls.",
@@ -3389,7 +3435,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       el.classList.add("term"); el.setAttribute("tabindex","0"); el.dataset.def = def;
     });
     const dl = document.getElementById("glossary-dl");
-    const titles = {transaction:"Transaction",forge:"Forge",lane:"Lane","rb":"RB · Ranking Block","eb":"EB · Endorser Block",quote:"Quote",["max fee"]:"Max fee","fee ceiling":"Fee ceiling",utilisation:"Utilisation",target:"Target","d":"D (max change / block)","discrimination floor":"Fast-lane premium (urgent ÷ standard — no floor)","retained value":"Retained value",shedding:"Shedding / walk-away","reservation value":"Reservation value","fee buffer":"Fee buffer","fee pot":"Fee pot",premium:"Premium (quote − base)",refund:"Refund (max fee − quote)",lovelace:"Lovelace",byte:"Byte",["test network"]:"Test network"};
+    const titles = {transaction:"Transaction",forge:"Forge",lane:"Lane","rb":"RB · Ranking Block","eb":"EB · Endorser Block",quote:"Quote",["max fee"]:"Max fee","fee ceiling":"Fee ceiling",utilisation:"Utilisation",target:"Target","d":"D (max change / block)","discrimination floor":"Fast-lane premium (urgent ÷ standard — no floor)","retained value":"Retained value",shedding:"Shedding / walk-away","reservation value":"Reservation value","fee buffer":"Fee buffer","fee pot":"Fee pot",premium:"Premium (quote − base)",refund:"Refund (max fee − quote)",lovelace:"Lovelace",byte:"Byte",["test network"]:"Test network",["diffusion time"]:"Diffusion time"};
     dl.innerHTML = Object.keys(GLOSSARY).map(k => `<dt>${titles[k]||k}</dt><dd>${GLOSSARY[k]}</dd>`).join("");
   }
 
