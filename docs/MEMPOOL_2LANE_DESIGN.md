@@ -104,6 +104,25 @@ one re-enters and rides a later EB. A probe sample spread across the closure
 keeps the certified-case cost bounded. A certification miss is a delay again,
 not a loss.
 
+**UPDATED (2026-07-22, the express reserve):** one regular block's worth of the
+urgent remainder is held OUT of the merge (`selectForForge`): the next RB is
+never empty while urgent traffic waits, and the held txs keep the instant
+service they bid the premium for. Only the overflow beyond the reserve rides.
+A selection-policy choice (the simulator's recommended construction merges the
+whole remainder) — flagged to Will for review.
+
+**UPDATED (2026-07-23, cert blocks apply their own payload FIRST):** the
+reserve's children ride the endorser block while their parents wait for the
+next RB — and when that next RB carries the certificate, apply-time used to
+REPLACE its payload with the EB cargo, silently dropping the parents and
+orphaning the children: an invalid block, a wedged chain (seen live at 250
+tx/s). The resolve now PREPENDS the block's own payload to the cargo
+(`resolveLeiosBlock`). The order is the dependency order: admission refuses
+any child of an in-flight EB transaction, so the payload never depends on the
+cargo, while the cargo may spend payload outputs. One consequence, flagged:
+a certified round settles the block's own payload at the certified rate too
+(the delivery stamp is per block, not per transaction).
+
 ## InternalState — two physical lanes, one chained ledger order
 
 Today (`Impl/Common.hs:104`) `InternalState` has ONE `isTxs`, ONE `isLedgerState`, ONE `isCapacity`,

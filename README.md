@@ -72,10 +72,11 @@ The rest of the mechanism, in the same spirit:
   same coin, the one admitted first keeps it — an admitted transaction is
   never displaced.
 - **Per-lane pools:** each lane has its own admission ceilings (bytes *and* an
-  expected-diffusion-time budget). The urgent pool is deliberately shallow
-  (time-sensitive traffic must not queue for hours); the patient pool buffers
-  many endorser blocks' worth. When a pool is full, senders are held back —
-  visible on the dashboard.
+  expected-diffusion-time budget), each pool ~200 MB deep. Since the lanes'
+  FIFO merge, the announced endorser block still drains the urgent pool every
+  round — depth costs wait, not correctness — and a storm queues and REPRICES
+  instead of bouncing at the door. Only past the ceilings are senders held
+  back — visible on the dashboard.
 
 Full specifications: [docs/DYNAMIC_PRICING_LEDGER_RULES.md](docs/DYNAMIC_PRICING_LEDGER_RULES.md)
 (the five ledger rules + the controller) and
@@ -161,8 +162,11 @@ Everything is on the page, in plain language, but the short tour:
   votes are cast and counted by the prototype itself (that is what the
   Certification-miss scenario switches off). Everything else on screen —
   prices, queues, blocks, evictions — is the real ledger and the real mempool.
-- **Demo calibrations** — diffusion-time budget 15 s split 1/9 urgent / 8/9
-  patient, patient pool ~132 MB. All are parameters, not constants.
+- **Demo calibrations** — a block every ~5 s (activeSlotsCoeff 0.2, so
+  certificates land in seconds instead of waiting out the leadership
+  lottery); diffusion-time budget 60 s split 1/4 urgent / 3/4 patient; each
+  pool ~200 MB deep, so a storm queues and REPRICES instead of bouncing at
+  the door. All are parameters, not constants.
 
 ## How this maps to the CIP
 

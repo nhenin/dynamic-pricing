@@ -440,9 +440,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           <p>Time-critical <span data-term="transaction">transactions</span>, riding the
           <span data-term="RB">ranking block</span> <span data-term="forge">forged</span> every round. Space is scarce,
           so its <span data-term="quote">quote</span> climbs fast under load — and eases back as the lane clears.
-          When the small block overflows, the remainder rides the next
-          <span data-term="EB">endorser block</span> as <em>riders</em> — and pays only the standard quote on that
-          slower delivery.</p>
+          When the small block overflows, one block's worth stays first in line for the next one — the express
+          lane never idles — and the rest rides the next <span data-term="EB">endorser block</span> as
+          <em>riders</em>, paying only the standard quote on that slower delivery.</p>
         </div>
         <div class="lane-card" style="border-left:3px solid var(--optimistic)">
           <h3 class="tag" style="color:var(--optimistic)">Standard · the patient lane</h3>
@@ -1339,7 +1339,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const cap = document.createElement("div");
     cap.className = "hint";
     cap.style.margin = "2px 0 0";
-    cap.innerHTML = `ribbons = the repricing dial unrolled, one cell per block: <span style="color:var(--live);font-weight:650">red</span> — the ledger stepped this price up (window over the ½ target) · <span style="color:var(--good);font-weight:650">green</span> — stepped down · grey — held. <strong>📥 marks a certificate round</strong>: the <span style="color:var(--optimistic);font-weight:650">patient lane steps on its endorser block</span> (the staircase), while the <span style="color:var(--urgent);font-weight:650">fast lane reads an idle reservation</span> and eases a little. Each lane reads a <em>window</em> of recent rounds (5 fast / 20 patient — the CIP's signals), which is why one odd block never whipsaws a price.`;
+    cap.innerHTML = `ribbons = the repricing dial unrolled, one cell per block: <span style="color:var(--live);font-weight:650">red</span> — the ledger stepped this price up (window over the ½ target) · <span style="color:var(--good);font-weight:650">green</span> — stepped down · grey — held (the window sits on the target, or the step is too small to survive integer rounding at low quotes: the controller resting on its equilibrium). <strong>📥 marks a certificate round</strong>: the <span style="color:var(--optimistic);font-weight:650">patient lane steps on its endorser block</span> (the staircase), while the <span style="color:var(--urgent);font-weight:650">fast lane reads an idle reservation</span> and eases a little. Each lane reads a <em>window</em> of recent rounds (5 fast / 20 patient — the CIP's signals), which is why one odd block never whipsaws a price.`;
     host.append(cap);
   }
 
@@ -2431,7 +2431,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // run-config.json (written by the runner) tells the page what is actually running.
   const EVGEN_EXPLAIN = {
     off:   "Nothing forced right now — only the regular crowd of senders.",
-    type1: "Floods the fast lane with max fees set just above today's price (×1.35); the burst's own full blocks push the quote past them within a block or two and their queued txs are dropped.",
+    type1: "Floods the fast lane with max fees set just above today's price (×1.10); the burst's own full blocks push the quote past them within a block or two — before the next endorser block could take them aboard — and their queued txs are dropped.",
     type2: "Sends pairs of txs fighting over one coin — first-come keeps it, the late urgent tx is turned away at the door.",
     type3: "Silences the certification committee — everything riding the endorser blocks, patient txs and urgent riders alike, freezes until you flip back to Quiet."
   };
@@ -3414,7 +3414,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     "forge":"To create a new block and add it to the blockchain (similar to mining on other networks). One node forges each block.",
     "lane":"One of two parallel paths for transactions: Urgent (fast) for time-sensitive work, Standard (patient) for routine work. Each lane has its own live price and queue.",
     "rb":"Ranking Block — the fast-lane block forged every round. Carries only urgent transactions. Smaller, so its space is scarce and its price climbs faster.",
-    "eb":"Endorser Block — the big block forged alongside the RB, applied only once the committee certifies it; only one is in flight at a time. Carries the first-come merge of standard transactions and the urgent overflow that missed the ranking block (its riders) in a 12 MB budget (~133× the RB), and is only issued when its payload is worth at least half a ranking block — below that the round pools. A rider delivered this way is charged the standard quote, the excess refunded.",
+    "eb":"Endorser Block — the big block forged alongside the RB, applied only once the committee certifies it; only one is in flight at a time. Carries the first-come merge of standard transactions and the urgent overflow beyond the next ranking block's worth (its riders — one block's worth is held back so the express lane never idles) in a 12 MB budget (~133× the RB), and is only issued when its payload is worth at least half a ranking block — below that the round pools. A rider delivered this way is charged the standard quote, the excess refunded.",
     "diffusion time":"How long a transaction is expected to take to spread across the network. Each lane's pool only admits a bounded total of it — when that budget is full, new senders are held back until the pool drains.",
     "quote":"The current published per-byte rate for a lane — a live signal of how busy it is; it updates every block as demand changes. A transaction's full price = a small fixed part + this rate × its size; its max fee must cover that total to enter and to stay.",
     "max fee":"The fee a sender writes into their transaction, capping what they'll pay. The network charges the live quote at inclusion time and refunds the difference.",
@@ -3508,21 +3508,21 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // senders are), the traffic (delayMs) and the lane policy (laneMix; null =
   // the senders choose economically). The spec on each chip says it upfront.
   const SCENARIOS = [
-    { name:"Calm day", spec:"~10 tx/s · senders decide",
-      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:100, laneMix:null,
+    { name:"Calm day", spec:"~20 tx/s · senders decide",
+      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:50, laneMix:null,
       watch:"The baseline: a calm, balanced crowd choosing its own lanes. Both quotes drift toward the floor and queues stay shallow." },
-    { name:"Rush hour", spec:"~50 tx/s · ~90% urgent (their choice)",
-      config:{...ACTOR_PRESETS["Impatient crowd"]}, delayMs:20, laneMix:null,
-      watch:"A busy, impatient crowd — ~90% pick the fast lane <em>themselves</em>. Watch the <strong>urgent queue</strong> spike first, then the <strong>urgent quote</strong> climb a block or two later to ration it." },
-    { name:"Sticker shock", spec:"~50 tx/s · price-elastic",
-      config:{...ACTOR_PRESETS["Bargain hunters"]}, delayMs:20, laneMix:null,
+    { name:"Rush hour", spec:"~250 tx/s · urgent-leaning, price-aware",
+      config:{honest:60,patient:0,impatient:40,valueMinAda:1,valueMaxAda:30,urgencyMin:0.05,urgencyMax:0.4}, delayMs:4, laneMix:null,
+      watch:"A busy crowd leaning urgent — but most senders weigh the price. Watch the <strong>urgent queue</strong> spike between announcements, the <strong>urgent quote</strong> climb to ration it, and then find its <strong>plateau</strong>: as it climbs, the marginal senders shift patient or walk away. The overflow rides the endorser blocks as riders, charged the standard rate." },
+    { name:"Sticker shock", spec:"~250 tx/s · price-elastic",
+      config:{...ACTOR_PRESETS["Bargain hunters"]}, delayMs:4, laneMix:null,
       watch:"Heavy traffic of price-sensitive senders. As the urgent quote climbs they shift to the patient lane or walk away — elasticity, live." },
-    { name:"Lazy Sunday", spec:"~10 tx/s · ~90% standard (their choice)",
-      config:{...ACTOR_PRESETS["Patient crowd"]}, delayMs:100, laneMix:null,
+    { name:"Lazy Sunday", spec:"~20 tx/s · ~90% standard (their choice)",
+      config:{...ACTOR_PRESETS["Patient crowd"]}, delayMs:50, laneMix:null,
       watch:"Nearly everyone rides the cheap patient lane. The urgent lane empties and its quote decays toward the 44 lovelace/byte floor — no cross-lane floor holds it up; the lanes can even cross." },
-    { name:"Bulk night", spec:"~50 tx/s · 85% standard (forced)",
-      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:20, laneMix:0.85,
-      watch:"The scenario forces 85% of txs onto the patient lane. Watch the endorser blocks fill to the brim — certification becomes the pace-setter. (Combine with ⚡ Certification miss to freeze it.)" },
+    { name:"Bulk night", spec:"~250 tx/s · 85% standard (forced) · fat 6 KB txs",
+      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:4, laneMix:0.85, metadataBytes:6000,
+      watch:"The scenario forces 85% of txs onto the patient lane, 6 KB each. Watch the endorser blocks genuinely fill — past the half-full target the <strong>standard quote</strong> finally leaves its floor — and certification become the pace-setter. (Combine with ⚡ Certification miss to freeze it.)" },
     { name:"Urgent storm", spec:"max tx/s · 100% urgent (forced)",
       config:{...ACTOR_PRESETS["Balanced"]}, delayMs:0, laneMix:0,
       watch:"Every tx force-fed into the fast lane, as fast as the node accepts. Watch the ranking blocks saturate at 430 tx, the urgent quote ration hard, and the queue climb — and the overflow ride the endorser blocks as riders, charged only the standard quote on that slower delivery." },
