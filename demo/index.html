@@ -400,7 +400,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           <!-- patient lane -->
           <rect x="234" y="160" width="296" height="66" rx="16" fill="var(--optimistic)" fill-opacity="0.12" stroke="var(--optimistic)" stroke-width="2"></rect>
           <text x="382" y="186" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--optimistic)">STANDARD · the patient lane</text>
-          <text x="382" y="202" text-anchor="middle" font-size="10" fill="var(--text)">the big certified block — ~133× the space</text>
+          <text x="382" y="202" text-anchor="middle" font-size="10" fill="var(--text)">the big certified block — ~33× the space</text>
           <text x="382" y="216" text-anchor="middle" font-size="10" fill="var(--muted)">applied at the next block, once certified</text>
           <rect x="292" y="238" width="180" height="22" rx="11" fill="none" stroke="var(--optimistic)" stroke-width="1.2" stroke-dasharray="4 3"></rect>
           <text x="382" y="253" text-anchor="middle" font-size="10" fill="var(--optimistic)">price: low · rests near the floor</text>
@@ -447,7 +447,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         <div class="lane-card" style="border-left:3px solid var(--optimistic)">
           <h3 class="tag" style="color:var(--optimistic)">Standard · the patient lane</h3>
           <p>Routine traffic that trades a short delay for a far lower rate, riding the
-          <span data-term="EB">endorser block</span> — ~133× the space, applied once the committee certifies it.
+          <span data-term="EB">endorser block</span> — ~33× the space, applied once the committee certifies it.
           Its price rests near the floor unless the lane genuinely fills.</p>
         </div>
         <div class="lane-card" style="border-left:3px solid #7c3aed">
@@ -477,7 +477,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       whole throughput budget. <strong>Linear Leios</strong> keeps the same rhythm but lets each round carry <strong>two
       bodies</strong>: the usual small <span data-term="RB">ranking block</span>, applied to the ledger the moment it
       arrives, and a big <span data-term="EB">endorser block</span> that is applied <em>later</em>, only after a committee
-      of pools certifies it. Over a hundred times the bytes per round (the endorser block alone carries ~133× a ranking
+      of pools certifies it. Over thirty times the bytes per round (the endorser block alone carries ~33× a ranking
       block), without touching the clock. One refinement: an endorser block is only issued when it is worth
       certifying — at least <strong>half a ranking block full</strong>; below that, the patient lane simply
       <em>pools</em> its transactions for the next round (the live cards show it as &ldquo;pooling — below the announcement threshold&rdquo;).</p>
@@ -489,13 +489,13 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           </marker>
         </defs>
         <rect x="10" y="30" width="740" height="106" rx="10" fill="none" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="5 4"></rect>
-        <text x="20" y="20" font-size="11" fill="var(--muted)">one block round — NOT to scale: the EB is ~133× the RB</text>
+        <text x="20" y="20" font-size="11" fill="var(--muted)">one block round — NOT to scale: the EB is ~33× the RB</text>
         <rect x="28" y="52" width="224" height="64" rx="8" fill="var(--rb)" fill-opacity="0.12" stroke="var(--rb)" stroke-width="2"></rect>
         <text x="140" y="78" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--rb)">RB — ranking block</text>
         <text x="140" y="97" text-anchor="middle" font-size="10.5" fill="var(--text)">90,112 bytes · ≈ 430 real-size tx</text>
         <rect x="268" y="52" width="448" height="64" rx="8" fill="var(--eb)" fill-opacity="0.12" stroke="var(--eb)" stroke-width="2"></rect>
         <text x="492" y="78" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--eb)">EB — endorser block</text>
-        <text x="492" y="97" text-anchor="middle" font-size="10.5" fill="var(--text)">12,000,000 bytes (real mainnet budget) · ≈ 57,000 real-size tx</text>
+        <text x="492" y="97" text-anchor="middle" font-size="10.5" fill="var(--text)">3,000,000 bytes (mainnet's closure throughput at this cadence) · ≈ 14,000 real-size tx</text>
         <path d="M140,136 L140,164" stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#arrow-anat)"></path>
         <text x="140" y="184" text-anchor="middle" font-size="11" font-weight="600" fill="var(--rb)">applied to the ledger immediately</text>
         <path d="M492,136 L492,164" stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#arrow-anat)"></path>
@@ -694,7 +694,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       </div>
       <div class="rr-lane" style="--lane:var(--optimistic)">
         <div class="t">Standard · patient lane</div>
-        Same rule against its own <strong>12,000,000-byte</strong> budget (~133× bigger). Each lane reads its
+        Same rule against its own <strong>3,000,000-byte</strong> budget (~33× bigger). Each lane reads its
         fullness over a <strong>window</strong> of recent rounds (5 samples for the fast lane, 20 for this one — the
         CIP's signals), so one odd block cannot swing the price. Full EBs counted → +6.25% steps that compound;
         ranking-block rounds weigh the window down. A full pool climbs the staircase; a trickle decays to the floor.
@@ -997,7 +997,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     <p class="hint">Each pale column is <strong>one forged block</strong>: its RB (teal) and, when the round issued
       one, its EB (amber) side by side — a column with no amber is a round that <em>pooled</em> below the announcement
       threshold. An RB holds the 90,112-byte mainnet block budget, an EB the real mainnet <strong>12&nbsp;MB</strong>
-      closure budget (~133× the RB) — so honest EB percentages run small; the tx count depends on tx size
+      closure budget (~33× the RB) — so honest EB percentages run small; the tx count depends on tx size
       (see <em>One round, two blocks</em> in ⚙️ The mechanism). Aligned on the same axis: watch a full teal fast lane push the urgent quote up on the next step, and a dashed endorser block (awaiting or missed certification) leave the patient lane's payments waiting.</p>
       <div class="legend">
         <span><span class="sw" style="background:#3b82f6; opacity:.35"></span><span class="sw" style="background:#a855f7; opacity:.35"></span><span class="sw" style="background:#ec4899; opacity:.35"></span>column tint = forging node (node1 · node2 · node3)</span>
@@ -1552,7 +1552,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // fullest block (uniform sizes then, so the estimate is honest enough).
   // The EB budget is the real mainnet one: the CIP-164 closure-size limit.
   // An EB is ~133x an RB, so honest EB percentages are small - keep a decimal.
-  const RB_BYTE_BUDGET = 90112, EB_BYTE_BUDGET = 12000000;
+  const RB_BYTE_BUDGET = 90112, EB_BYTE_BUDGET = 3000000;
   let laneMaxCache = {len: 0, rb: 1, eb: 1};
   function laneMaxes(){
     if (laneMaxCache.len !== all.length){
@@ -1836,7 +1836,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       `<button type="button" class="scenario" style="padding:2px 10px" onclick="this.parentElement.parentElement.style.display='none'">close</button></div>`+
       `<div style="margin-top:4px; line-height:1.8">`+
       `① <span style="color:var(--rb)">fast lane: ${b.rb} urgent tx</span> · ${kb(b.rbBytes)} = <strong>${rbPct(b)}%</strong> of the 90,112-byte budget — applied first, instantly${deliveryNote}<br>`+
-      `② <span style="color:var(--eb)">endorser block: ${total.toLocaleString()} tx</span>${total ? ` (${b.eb.toLocaleString()} standard + ${(b.ebUrgent||0).toLocaleString()} urgent riders) · ${mb(b.ebBytes)} = <strong>${ebPct(b)}%</strong> of the 12 MB budget` : ``} — ${ebLine}<br>`+
+      `② <span style="color:var(--eb)">endorser block: ${total.toLocaleString()} tx</span>${total ? ` (${b.eb.toLocaleString()} standard + ${(b.ebUrgent||0).toLocaleString()} urgent riders) · ${mb(b.ebBytes)} = <strong>${ebPct(b)}%</strong> of the 3 MB budget` : ``} — ${ebLine}<br>`+
       delivered+
       `${delivered ? "④" : "③"} reprice: urgent ${prev?adaKb(prev.urgent)+" → ":""}<strong>${adaKb(b.urgent)}</strong>${pct(du, prev?.urgent)} · `+
       `standard ${prev?adaKb(prev.optimistic)+" → ":""}<strong>${adaKb(b.optimistic)}</strong>${pct(dm, prev?.optimistic)}`+
@@ -3414,7 +3414,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     "forge":"To create a new block and add it to the blockchain (similar to mining on other networks). One node forges each block.",
     "lane":"One of two parallel paths for transactions: Urgent (fast) for time-sensitive work, Standard (patient) for routine work. Each lane has its own live price and queue.",
     "rb":"Ranking Block — the fast-lane block forged every round. Carries only urgent transactions. Smaller, so its space is scarce and its price climbs faster.",
-    "eb":"Endorser Block — the big block forged alongside the RB, applied only once the committee certifies it; only one is in flight at a time. Carries the first-come merge of standard transactions and the urgent overflow beyond the next ranking block's worth (its riders — one block's worth is held back so the express lane never idles) in a 12 MB budget (~133× the RB), and is only issued when its payload is worth at least half a ranking block — below that the round pools. A rider delivered this way is charged the standard quote, the excess refunded.",
+    "eb":"Endorser Block — the big block forged alongside the RB, applied only once the committee certifies it; only one is in flight at a time. Carries the first-come merge of standard transactions and the urgent overflow beyond the next ranking block's worth (its riders — one block's worth is held back so the express lane never idles) in a 3 MB budget (~33× the RB), and is only issued when its payload is worth at least half a ranking block — below that the round pools. A rider delivered this way is charged the standard quote, the excess refunded.",
     "diffusion time":"How long a transaction is expected to take to spread across the network. Each lane's pool only admits a bounded total of it — when that budget is full, new senders are held back until the pool drains.",
     "quote":"The current published per-byte rate for a lane — a live signal of how busy it is; it updates every block as demand changes. A transaction's full price = a small fixed part + this rate × its size; its max fee must cover that total to enter and to stay.",
     "max fee":"The fee a sender writes into their transaction, capping what they'll pay. The network charges the live quote at inclusion time and refunds the difference.",
@@ -3508,8 +3508,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // senders are), the traffic (delayMs) and the lane policy (laneMix; null =
   // the senders choose economically). The spec on each chip says it upfront.
   const SCENARIOS = [
-    { name:"Calm day", spec:"~20 tx/s · senders decide",
-      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:50, laneMix:null,
+    { name:"Calm day", spec:"~33 tx/s · senders decide",
+      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:30, laneMix:null,
       watch:"The baseline: a calm, balanced crowd choosing its own lanes. Both quotes drift toward the floor and queues stay shallow." },
     { name:"Rush hour", spec:"~250 tx/s · urgent-leaning, price-aware",
       config:{honest:60,patient:0,impatient:40,valueMinAda:1,valueMaxAda:30,urgencyMin:0.05,urgencyMax:0.4}, delayMs:4, laneMix:null,
@@ -3517,21 +3517,24 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     { name:"Sticker shock", spec:"~250 tx/s · price-elastic",
       config:{...ACTOR_PRESETS["Bargain hunters"]}, delayMs:4, laneMix:null,
       watch:"Heavy traffic of price-sensitive senders. As the urgent quote climbs they shift to the patient lane or walk away — elasticity, live." },
-    { name:"Lazy Sunday", spec:"~20 tx/s · ~90% standard (their choice)",
-      config:{...ACTOR_PRESETS["Patient crowd"]}, delayMs:50, laneMix:null,
+    { name:"Lazy Sunday", spec:"~33 tx/s · ~90% standard (their choice)",
+      config:{...ACTOR_PRESETS["Patient crowd"]}, delayMs:30, laneMix:null,
       watch:"Nearly everyone rides the cheap patient lane. The urgent lane empties and its quote decays toward the 44 lovelace/byte floor — no cross-lane floor holds it up; the lanes can even cross." },
     { name:"Bulk night", spec:"~250 tx/s · 85% standard (forced) · fat 6 KB txs",
       config:{...ACTOR_PRESETS["Balanced"]}, delayMs:4, laneMix:0.85, metadataBytes:6000,
       watch:"The scenario forces 85% of txs onto the patient lane, 6 KB each. Watch the endorser blocks genuinely fill — past the half-full target the <strong>standard quote</strong> finally leaves its floor — and certification become the pace-setter. (Combine with ⚡ Certification miss to freeze it.)" },
-    { name:"Urgent storm", spec:"max tx/s · 100% urgent (forced)",
-      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:0, laneMix:0,
-      watch:"Every tx force-fed into the fast lane, as fast as the node accepts. Watch the ranking blocks saturate at 430 tx, the urgent quote ration hard, and the queue climb — and the overflow ride the endorser blocks as riders, charged only the standard quote on that slower delivery." },
+    { name:"Urgent storm", spec:"max tx/s · 100% urgent (forced) · fat 6 KB txs",
+      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:0, laneMix:0, metadataBytes:6000,
+      watch:"Every tx force-fed into the fast lane, as fast as the node accepts, 6 KB each. Watch the ranking blocks saturate (~14 fat txs fill one), the urgent quote ration hard, the overflow ride the endorser blocks as riders — and the bytes outrun even that drain, so the urgent POOL itself fills toward its ceilings until senders are held back at the door." },
     { name:"Standard storm", spec:"max tx/s · 100% standard (forced) · fat 12 KB txs",
       config:{...ACTOR_PRESETS["Balanced"]}, delayMs:0, laneMix:1, metadataBytes:12000,
-      watch:"Every tx force-fed into the patient lane, as fast as the node accepts — and each one carries a fat 12 KB payload, so the bytes pour in far faster than even a 12 MB endorser block drains them. Watch the EBs pin at 100%, the queue balloon, and certification set the pace." },
-    { name:"Flood", spec:"max tx/s · 50/50 (forced)",
-      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:0, laneMix:0.5,
-      watch:"As fast as the node accepts, force-fed 50/50. Watch the queues balloon and backpressure throttle the senders — the mempool defends itself." },
+      watch:"Every tx force-fed into the patient lane, as fast as the node accepts — and each one carries a fat 12 KB payload, so the bytes pour in far faster than even a 3 MB endorser block drains them. Watch the EBs pin at 100%, the queue balloon, and certification set the pace." },
+    { name:"Flood", spec:"max tx/s · 50/50 (forced) · fat 6 KB txs",
+      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:0, laneMix:0.5, metadataBytes:6000,
+      watch:"As fast as the node accepts, force-fed 50/50 — and each tx carries 6 KB, so the bytes pour in faster than the endorser blocks drain them. Watch both queues build across the 200 MB pools, both quotes climb, and backpressure hold the senders back only at the true ceilings — the mempool defends itself." },
+    { name:"High tide", spec:"max tx/s · 50/50 (forced) · fat 12 KB txs · ceiling bids — fill the pools themselves",
+      config:{...ACTOR_PRESETS["Balanced"], feeBuffer:0}, delayMs:0, laneMix:0.5, metadataBytes:12000,
+      watch:"The tide rises faster than any block can drain it — fat txs bidding the <strong>fee ceiling</strong>, so the climbing quotes cannot evict a single one. Watch the endorser blocks pin at 100% round after round, both <strong>pools</strong> climb toward their 200 MB and diffusion-time ceilings, and — at the brim — the crowd get <strong>held back at the door</strong> (🚪): backpressure, not loss. Ease off and the pools drain in order." },
     { name:"Ghost town", spec:"nobody sends · a stray tx every ~15 s",
       config:{...ACTOR_PRESETS["Balanced"]}, delayMs:15000, laneMix:null,
       watch:"Demand stops. Watch both quotes ease back toward the floor (−6.25% a block), the queues drain, and blocks run near-empty — the mechanism at rest." },
@@ -3564,7 +3567,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 
   document.getElementById("footnote").innerHTML =
     "Live 3-node Cardano Dijkstra test network · the price controller is a dynamic fee mechanism (like Ethereum's EIP-1559, "+
-    "adapted for Cardano): each lane aims for half-full blocks against its own byte budget — 90,112 B for the RB, 12 MB for the EB — "+
+    "adapted for Cardano): each lane aims for half-full blocks against its own byte budget — 90,112 B for the RB, 3 MB for the EB — "+
     "and moves at most ±6.25% per block, never below 44 lovelace/byte · an endorser block only issues when its payload is worth "+
     "at least half a ranking block — else the round pools (the announcement threshold) · the lanes are priced independently — no "+
     "cross-lane floor, brief crossings permitted, the urgent lane opens at 2× the standard rate · the ledger charges the quote of "+

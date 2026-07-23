@@ -26,8 +26,10 @@ end. Captions included. The file also ships in the repo:
 Every Linear Leios block round carries **two block bodies**:
 
 - a small **ranking block** (RB, 90,112 bytes) applied to the ledger instantly;
-- a big **endorser block** (EB, 12,000,000 bytes — the real mainnet CIP-164
-  closure budget, ~133× the RB) applied only once a committee certifies it.
+- a big **endorser block** (EB, 3,000,000 bytes — mainnet's CIP-164 closure
+  THROUGHPUT at the demo's 4× block cadence: 12 MB per 20-second round there
+  is 3 MB per 5-second round here, ~33× the RB) applied only once a committee
+  certifies it.
 
 Dynamic pricing turns those two transports into **two priced lanes**:
 

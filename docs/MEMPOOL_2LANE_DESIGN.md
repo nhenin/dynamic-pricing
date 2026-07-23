@@ -238,7 +238,8 @@ Both lanes' quotes rose under congestion and the 16x discrimination floor held (
 `InvalidBlock` / `OptimisticOverflowsBlock` / `StoreButDontChange` signals.
 
 Consistency fix surfaced here: the **forge's** EB byte capacity (`leiosEndorserBlockMeasure`, consensus)
-must equal the **ledger's** optimistic EB budget (`optimisticBlockCapacity`, 12 MB), clamped to the
+must equal the **ledger's** optimistic EB budget (`optimisticBlockCapacity`, 3 MB — mainnet's
+closure throughput at the demo's 4× cadence), clamped to the
 Leios EB closure-size transport limit. Otherwise the forge over-fills the EB and the ledger rejects it
 with `OptimisticOverflowsBlock` → the EB never applies → the optimistic quote can never move. Aligning
 the two is what let the optimistic lane respond.
