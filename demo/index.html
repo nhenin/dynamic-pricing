@@ -1481,20 +1481,33 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       `<strong style="color:var(--shed)">${pct(last.shed)}%</strong> walk away.`;
   }
 
-  // Certification status of each block's EB. Primary key is the ebHash the
-  // tailer attached to the block record; when trace ordering left it null, fall
-  // Hash-only join: each EB-carrying block is matched to its endorser block
-  // by hash, so old rows never flicker as the two feeds grow out of step.
+  // An endorser block is identified by its Linear Leios point: slot + body
+  // hash. The same cargo can be announced at two slots, so hash alone is not
+  // enough to join a certificate to the block that announced it.
+  const ebPointId = (slot, hash) =>
+    slot == null || !hash ? null : `${slot}:${hash}`;
+  const blockEbPoint = b =>
+    b && (b.ebPoint || ebPointId(b.ebSlot == null ? b.slot : b.ebSlot, b.ebHash));
+  const certEbPoint = c =>
+    c && (c.point || ebPointId(c.slot, c.hash));
+  const certMatchesBlock = (b, cert) => {
+    const bp = blockEbPoint(b), cp = certEbPoint(cert);
+    if (bp && cp) return bp === cp;
+    return !!(b && cert && b.ebHash && cert.hash && b.ebHash === cert.hash);
+  };
+
   let ebJoin = new Map();
   function computeEbJoin(){
-    // Hash-only join: stable across polls (a positional zip would shift whenever
-    // the two feeds grow out of step, flickering the status of OLD blocks).
     ebJoin = new Map();
     const ebs = (leiosStatus && leiosStatus.ebs) || [];
-    const byHash = new Map(ebs.map(e => [e.hash, e]));
+    const byPoint = new Map(ebs.filter(e => e.point).map(e => [e.point, e]));
     for (const b of all){
       if (!(ebTxs(b) > 0)) continue;
-      const e = b.ebHash ? byHash.get(b.ebHash) : undefined;
+      // Hash fallback keeps streams recorded before point-aware traces readable.
+      const e = byPoint.get(blockEbPoint(b))
+        || ebs.find(x => b.ebHash && x.hash === b.ebHash
+          && (b.ebSlot == null || x.slot === b.ebSlot))
+        || ebs.find(x => b.ebHash && x.hash === b.ebHash);
       let st = "unknown";
       if (e){
         if (e.certified) st = "certified";
@@ -1654,7 +1667,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const idx = all.findIndex(r => r.i === b.i);
     const pb = idx > 0 ? all[idx-1] : null;
     const reShown = pb && ebTxs(b) > 0 && ebTxs(b) === ebTxs(pb) && b.ebBytes === pb.ebBytes
-      && (!b.ebHash || b.ebHash === pb.ebHash) && st !== "certified";
+      && (!b.ebHash || b.ebHash === pb.ebHash) && st !== "certified" && st !== "unknown";
     const cert = !ebTxs(b) ? "" :
       reShown ? ` · <span style="color:var(--muted)">⟳ the same endorser block, still in flight — not counted again</span>` :
       st === "certified" ? ` · <span style="color:var(--good)">✓ certified later — counts when its certificate lands</span>` :
@@ -1732,11 +1745,11 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       // while it waits — one cargo, many bars. Draw the repeats as ghosts, or
       // a congested stretch reads as "a full EB delivered every block".
       const reShown = prevB && ebTxs(b) > 0 && ebTxs(b) === ebTxs(prevB) && b.ebBytes === prevB.ebBytes
-        && (!b.ebHash || b.ebHash === prevB.ebHash) && st !== "certified";
+        && (!b.ebHash || b.ebHash === prevB.ebHash) && st !== "certified" && st !== "unknown";
       if (b.rb) rects.push({x1:b.i-0.42, x2:b.i-0.01, y1:0, y2:rbPct(b), kind:"rb", i:b.i});
       if (ebTxs(b)) rects.push({x1:b.i+0.01, x2:b.i+0.42, y1:0, y2:ebPct(b),
                             kind: reShown ? "ebsame"
-                              : st === "awaiting" ? "ebwait" : st === "missed" ? "ebmiss" : st === "superseded" ? "ebsuper" : st === "unknown" ? "ebsame" : "eb", i:b.i});
+                              : st === "awaiting" ? "ebwait" : st === "missed" ? "ebmiss" : st === "superseded" ? "ebsuper" : st === "unknown" ? "ebunknown" : "eb", i:b.i});
       if (b.ebHash || ebTxs(b)) prevB = b;
     }
     // The certification pipeline, drawn: an arc from the block that ANNOUNCES
@@ -1749,7 +1762,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const certIdle = [];
     for (const b of blocks){
       if (!b.certIn || !b.certIn.hash) continue;
-      const src = [...blocks].reverse().find(a => a.i < b.i && a.ebHash === b.certIn.hash);
+      const src = [...blocks].reverse().find(a => a.i < b.i && certMatchesBlock(a, b.certIn));
       const n = b.certIn.numTxs || (src ? src.eb + (src.ebUrgent || 0) : 0);
       if (src) certArcs.push({x1: src.i, y1: Math.min(100, ebPct(src)) + 3, x2: b.i, y2: 12, i: b.i, n});
       if (!b.rb) certIdle.push({x1:b.i-0.42, x2:b.i-0.01, y1:0, y2:100, i:b.i});
@@ -1778,7 +1791,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           fill: tok("--good"), fillOpacity: 0.10,
           stroke: tok("--good"), strokeWidth: 1.2, strokeDasharray: "3,2",
         }),
-        Plot.rect(rects.filter(d => d.kind !== "ebwait"), {x1:"x1", x2:"x2", y1:"y1", y2:"y2",
+        Plot.rect(rects.filter(d => d.kind === "rb" || d.kind === "eb"), {x1:"x1", x2:"x2", y1:"y1", y2:"y2",
           fill: d => FILL[d.kind], fillOpacity: 0.9,
         }),
         Plot.rect(rects.filter(d => d.kind === "ebwait"), {x1:"x1", x2:"x2", y1:"y1", y2:"y2",
@@ -1795,6 +1808,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         }),
         Plot.rect(rects.filter(d => d.kind === "ebsame"), {x1:"x1", x2:"x2", y1:"y1", y2:"y2",
           fill: tok("--eb"), fillOpacity: 0.10,
+        }),
+        Plot.rect(rects.filter(d => d.kind === "ebunknown"), {x1:"x1", x2:"x2", y1:"y1", y2:"y2",
+          fill: tok("--eb"), fillOpacity: 0.35,
+          stroke: t.axis, strokeWidth: 1.2, strokeDasharray: "2,2",
         }),
         Plot.rect(delivRects, {x1:"x1", x2:"x2", y1:"y1", y2:"y2",
           fill: tok("--eb"), fillOpacity: 0.12,
@@ -1842,7 +1859,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const st = ebStatus(b);
     const total = ebTxs(b);
     // Where this block's announced EB eventually counted (certificate landing).
-    const certAt = b.ebHash ? all.find(a => a.i > b.i && a.certIn && a.certIn.hash === b.ebHash) : null;
+    const certAt = b.ebHash
+      ? all.find(a => a.i > b.i && a.certIn && certMatchesBlock(b, a.certIn))
+      : null;
     const ebWait = certAt && certAt.slot != null && b.slot != null ? `${certAt.slot - b.slot} slots later` : null;
     const hash = h => h ? ` <span class="hint" style="margin:0">(eb ${h})</span>` : ``;
     const ebLine = !total
@@ -1857,7 +1876,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
               ? `<span style="color:var(--live)">✖ certification stalled</span> — nothing certifies (the committee is silent); its ${total.toLocaleString()} tx wait aboard${hash(b.ebHash)}`
               : `certification status unknown${hash(b.ebHash)}`;
     // What a certificate delivers INTO this block.
-    const src = b.certIn && b.certIn.hash ? all.slice(0, idx).reverse().find(a => a.ebHash === b.certIn.hash) : null;
+    const src = b.certIn && b.certIn.hash
+      ? all.slice(0, idx).reverse().find(a => certMatchesBlock(a, b.certIn))
+      : null;
     const delivered = !b.certIn ? "" :
       `③ <span style="color:var(--good)">📥 delivered here: ${(b.certIn.numTxs||0).toLocaleString()} tx</span> — the endorser block${src ? ` announced at <strong>block #${src.i}</strong>` : ``}${src && src.slot != null && b.slot != null ? ` (${b.slot - src.slot} slots ago)` : ``} counts in THIS block's pricing; its urgent riders are charged the standard quote, the excess refunded <span class="hint" style="margin:0">(eb ${b.certIn.hash})</span><br>`;
     const rbDiary = b.certIn && !b.rb
@@ -2295,7 +2316,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       // Only ONE endorser block is in flight at a time: while it waits, every
       // new round re-shows the SAME stuck EB (same hash) — say so, or the diary
       // reads as if many endorser blocks were waiting at once.
-      const sameEb = prev && b.ebHash && prev.ebHash === b.ebHash;
+      const sameEb = prev && b.ebHash && prev.ebHash === b.ebHash && st !== "unknown";
       const certLanded = b.certIn
         ? ` · <span style="color:var(--good)">📥 certificate landed — the ${(b.certIn.numTxs||0).toLocaleString()}-tx endorser block COUNTS in this block's pricing</span>`
         : "";
@@ -2305,7 +2326,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           ? ` · <span style="color:var(--live)">EB ⏳ still the same endorser block, awaiting votes</span>`
           : ` · <span style="color:var(--live)">EB ⏳ awaiting votes</span>`) :
         st === "superseded" ? ` · <span style="color:var(--shed)">EB ↷ superseded</span>` :
-        st === "missed" ? ` · <span style="color:var(--live)">EB ✖ certification stalled</span>` : "") + certLanded;
+        st === "missed" ? ` · <span style="color:var(--live)">EB ✖ certification stalled</span>` :
+        st === "unknown" ? ` · <span class="hint" style="margin:0">EB trace unavailable</span>` : "") + certLanded;
       const rbBadge = b.certIn && !b.rb
         ? `<span style="color:var(--good)"><strong>CERT · NO RB TX</strong> — certificate replaces the RB transaction list</span>`
         : `<span style="color:var(--rb)">RB ${rbPct(b)}% full · ${b.rb} urgent tx</span>`;
