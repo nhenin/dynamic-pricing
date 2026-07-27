@@ -1,3 +1,7 @@
+
+
+https://github.com/user-attachments/assets/eb5396ba-a0b3-4c86-8960-3bae4db0bf99
+
 # Two-lane dynamic pricing on Cardano — prototype & live demo
 
 A working prototype of **dynamic, two-lane transaction pricing** for Cardano
@@ -14,7 +18,11 @@ git submodule update --init --recursive
 
 ## The walkthrough (8 min)
 
-https://github.com/user-attachments/assets/6b3e4181-4610-4541-baa8-711e605c2614
+
+
+https://github.com/user-attachments/assets/6a4ef69a-516f-4517-bfbd-d7b8a97b09cf
+
+
 
 The two lanes live on the devnet: rush hour, a price squeeze with real
 evictions, the measured pots, a certification miss and its heal, the quiet
