@@ -505,8 +505,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     </div>
     <p class="hint" style="margin:8px 0 0">Capacity is measured in <em>bytes</em>, not tx. Max tx size is 16,384 bytes.
       The demo can pad its transactions (fat ≈ 2,300-byte tx → a full RB ≈ 40 tx, congestion with small counts) or send
-      bare mainnet-size payments (≈ 210 bytes → a full RB ≈ 430 tx). The RB is applied first, then the certified EB —
-      no filler between the two. <span id="anatomy-live"></span></p>
+      bare mainnet-size payments (≈ 210 bytes → a full RB ≈ 430 tx). In an ordinary round, the RB carries transactions.
+      In a certification round, Linear Leios puts the certificate in that RB <em>instead of</em> a transaction list;
+      the certified EB's cargo is applied with no RB filler. <span id="anatomy-live"></span></p>
   </div>
 
   <div class="panel">
@@ -514,9 +515,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     <p class="hint">The endorser block ships <em>optimistically</em>: before the whole network has checked it. The Leios
       rule: it only becomes part of the ledger once pools holding at least <strong>75% of the stake</strong> vote for it.
       On this devnet the committee is the same three pools that forge — each holds ⅓ of the stake, so <strong>all three
-      votes</strong> are needed. (Prototype honesty note: the votes are really cast and traced, but the certificate itself
-      is still a simulated stub — the quorum arithmetic isn't wired in yet. The ⚡ <em>certification miss</em> scenario
-      withholds the votes and the certificate together.)</p>
+      votes</strong> are needed. This is the Linear Leios path end to end: the pools cast the votes, the protocol forms
+      the certificate, and both are traced. The ⚡ <em>certification miss</em> scenario withholds the committee votes, so
+      no certificate can be formed until the scenario is switched off.</p>
     <div class="loop-wrap">
       <svg viewBox="0 0 760 128" width="760" height="128" role="img" aria-label="certification pipeline: EB forged, three votes, certificate, applied">
         <defs>
@@ -663,13 +664,13 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 
   <div class="panel">
     <h2>The repricing rule <span style="font-weight:400;color:var(--muted)">— what the ledger computes after every block</span></h2>
-    <p class="hint" style="font-size:13.5px">After every block, the ledger looks at <strong>how full that lane's block
-      ran</strong> and republishes the price. That's the whole rule:</p>
+    <p class="hint" style="font-size:13.5px">After every block, the ledger appends that round's lane sample to a
+      <strong>rolling utilisation window</strong> and republishes the price from the window as a whole. That's the rule:</p>
     <div style="display:flex;flex-direction:column;gap:6px;margin:6px 0 2px;font-size:13.5px;line-height:1.6">
-      <div>📈 Ran <strong>more than half-full</strong> → the price <strong style="color:var(--live)">rises</strong> —
-        the fuller it ran, the bigger the step, up to <strong>+6.25%</strong>.</div>
-      <div>📉 Ran <strong>less than half-full</strong> → the price <strong style="color:var(--good)">falls</strong> —
-        the emptier, the bigger the cut, down to <strong>−6.25%</strong>.</div>
+      <div>📈 The window is <strong>more than half-full</strong> → the price <strong style="color:var(--live)">rises</strong> —
+        the fuller the window, the bigger the step, up to <strong>+6.25%</strong>.</div>
+      <div>📉 The window is <strong>less than half-full</strong> → the price <strong style="color:var(--good)">falls</strong> —
+        the emptier the window, the bigger the cut, down to <strong>−6.25%</strong>.</div>
       <div>🧱 It never drops below the <strong>floor</strong>: 44 lovelace/byte.</div>
     </div>
     <div class="rr-scale">
@@ -677,27 +678,29 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       <div class="mid"></div>
       <div class="rr-live" id="rr-live-dot" style="left:50%;display:none"></div>
       <div class="rr-ticks">
-        <span><b>−6.25%</b>block ran empty</span>
+        <span><b>−6.25%</b>window reads empty</span>
         <span><b>−3.1%</b>¼ full</span>
         <span style="text-align:center"><b>0</b>half-full — on target</span>
         <span><b>+3.1%</b>¾ full</span>
-        <span style="text-align:right"><b>+6.25%</b>ran full</span>
+        <span style="text-align:right"><b>+6.25%</b>window reads full</span>
       </div>
       <div class="rr-live-note" id="rr-live-note" style="display:none"></div>
     </div>
     <div class="rr-lanes">
       <div class="rr-lane" style="--lane:var(--urgent)">
         <div class="t">Urgent · fast lane</div>
-        Fullness is measured against <strong>its own block</strong>: the ranking block's <strong>90,112 bytes</strong>.
-        A small block fills easily, so this is the price that <strong>does the moving</strong> — the drama on the
-        History chart is almost always this line.
+        A transaction-carrying RB contributes its urgent fill; a certified EB contributes its urgent riders. Both are
+        measured against the ranking block's <strong>90,112-byte</strong> reservation and capped at one reservation
+        before entering the latest <strong>5-sample</strong> window. The small reservation fills easily, so this is the
+        price that <strong>does the moving</strong> — the drama on the History chart is almost always this line.
       </div>
       <div class="rr-lane" style="--lane:var(--optimistic)">
         <div class="t">Standard · patient lane</div>
         Same rule against its own <strong>3,000,000-byte</strong> budget (~33× bigger). Each lane reads its
         fullness over a <strong>window</strong> of recent rounds (5 samples for the fast lane, 20 for this one — the
-        CIP's signals), so one odd block cannot swing the price. Full EBs counted → +6.25% steps that compound;
-        ranking-block rounds weigh the window down. A full pool climbs the staircase; a trickle decays to the floor.
+        CIP's signals), so one odd block cannot swing the price. Repeated full certified EBs lift the window and compound
+        upward steps; ranking-block rounds weigh the standard denominator down. A sustained full lane climbs the
+        staircase; a trickle decays to the floor.
       </div>
     </div>
     <p class="hint" style="margin-top:12px">And that is the whole rule: the two lanes are priced
@@ -728,7 +731,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         <div class="legend-line" style="margin-top:8px">
           <b>fullness</b> = bytes carried ÷ the lane's own byte budget, read over the lane's window of recent rounds (5 fast / 20 patient) · the ½ is the half-full
           target · the ÷8 and the ±6.25% cut-off both come from the damping parameter <b>D&nbsp;=&nbsp;16</b> ·
-          <b>floor</b> = 44 lovelace/byte.
+          <b>floor</b> = 44 lovelace/byte. Quotes are whole lovelace: near the floor, deterministic rounding can make a
+          displayed ratio such as 44 → 47 look slightly larger than 6.25%, although the rational controller step is capped.
         </div>
       </div>
     </details>
@@ -749,7 +753,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         block producer's luck.</div>
       <div>↩️ <strong>Refund</strong> — max fee − quote, the unused headroom — is credited back to the transaction's
         <strong>refund account</strong> after the block. The max fee is a ceiling, not a price: this demo's senders cap at the
-        live quote × their <span data-term="fee buffer">fee buffer</span> (a cockpit slider), and the refund is whatever
+        live quote × their <span data-term="fee buffer">fee buffer</span> (part of the selected demand scenario), and the refund is whatever
         of that headroom the delivering block's quote leaves unspent — the full buffer margin when the price held still,
         less when it climbed while the tx waited, plus the whole urgent-to-standard drop for a rider delivered by a
         certified endorser block.</div>
@@ -948,11 +952,12 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       ledger state once per block — measured pots, not a model.</p>
       <div class="nowgrid" id="incgrid" style="grid-template-columns:auto 1fr 1fr 1fr"></div>
       <div class="hint" id="inc-quant" style="line-height:1.6;margin-top:8px"></div>
-      <p class="hint" style="font-size:12px;margin:6px 0 0">How the senders set their max fee: each transaction caps at its lane's
-      <strong>live quote × the fee buffer</strong> (the cockpit slider — headroom against being priced out while waiting),
-      capped by the demo's <code>FEE</code> ceiling. The refund is that buffer margin coming back once the going rate is
-      charged — plus, for urgent riders delivered by a certified endorser block, the drop from the urgent quote to the
-      standard one. Set the buffer to 0 in the cockpit to restore the old flat ceilings and watch the refunds balloon.</p>
+      <p class="hint" style="font-size:12px;margin:6px 0 0">How the senders set their max fee: price-aware scenarios cap each transaction at its lane's
+      <strong>live quote × the scenario's fee buffer</strong>, bounded by the demo's <code>FEE</code> ceiling. Saturation
+      scenarios deliberately bid that ceiling so rising quotes measure sustained capacity instead of evicting the load
+      generator's dependent transaction chains. The dedicated <strong>Price squeeze</strong> command tests
+      <code>BidBelowQuote</code> with independently funded transactions. In either case, the unused headroom is refunded
+      after delivery — including the urgent-to-standard price drop for an urgent rider delivered by a certified endorser block.</p>
     </details>
 
   <details class="panel" id="pane-history" open>
@@ -975,7 +980,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     </div>
     <p class="hint">Each lane's <span data-term="quote">quote</span> climbs while its blocks fill and eases back as they
       drain — and the two lines are <em>meant</em> to look different: the urgent quote does the moving, while the
-      standard one rests at the floor unless something fills a meaningful share of its 12&nbsp;MB block. The lanes are
+      standard one rests at the floor unless certified endorser blocks fill a meaningful share of the devnet's
+      3&nbsp;MB-per-round budget. The lanes are
       priced <span data-term="discrimination floor">independently</span> — no cross-lane floor — so brief quote
       crossings are possible and permitted. The block bars show <strong>% of each
       lane's byte budget</strong> — the true fullness (capacity is bytes, and a handful of fat scenario txs can fill a
@@ -987,8 +993,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     <div class="legend">
       <span><span class="sw" style="background:var(--urgent)"></span>urgent quote (fast lane / RB)</span>
       <span><span class="sw" style="background:var(--optimistic)"></span>standard quote (patient lane / EB)</span>
-      <span><span class="sw" style="background:var(--urgent); opacity:.18"></span>urgent queue (pale area, dashed edge — its own hidden scale; the live count sits at the right)</span>
-      <span><span class="sw" style="background:var(--optimistic); opacity:.25"></span>standard queue (dashed)</span>
+      <span><span class="sw" style="background:var(--urgent); opacity:.18"></span>urgent queue occupancy (pale area, dashed edge — height is its share of urgent pool capacity)</span>
+      <span><span class="sw" style="background:var(--optimistic); opacity:.25"></span>standard queue occupancy (same scale: share of standard pool capacity)</span>
       <span id="ada-note" style="color:var(--muted)"></span>
     </div>
     <figure id="panel-price" style="margin:0"></figure>
@@ -996,12 +1002,16 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     <h3 style="margin-top:18px">The blocks — how full each one ran, and whether it certified</h3>
     <p class="hint">Each pale column is <strong>one forged block</strong>: its RB (teal) and, when the round issued
       one, its EB (amber) side by side — a column with no amber is a round that <em>pooled</em> below the announcement
-      threshold. An RB holds the 90,112-byte mainnet block budget, an EB the real mainnet <strong>12&nbsp;MB</strong>
-      closure budget (~33× the RB) — so honest EB percentages run small; the tx count depends on tx size
+      threshold. An RB holds the 90,112-byte mainnet block budget; at this devnet's four-times-faster cadence, each EB
+      holds <strong>3&nbsp;MB</strong>, preserving the 12&nbsp;MB-per-mainnet-round throughput (~33× the RB here).
+      A green outlined <strong>CERT · NO RB TX</strong> slot is different from an empty queue: under the Linear Leios
+      chain-inclusion rule, that RB contains a previously announced EB's certificate instead of a transaction list.
+      The tx count depends on tx size
       (see <em>One round, two blocks</em> in ⚙️ The mechanism). Aligned on the same axis: watch a full teal fast lane push the urgent quote up on the next step, and a dashed endorser block (awaiting or missed certification) leave the patient lane's payments waiting.</p>
       <div class="legend">
         <span><span class="sw" style="background:#3b82f6; opacity:.35"></span><span class="sw" style="background:#a855f7; opacity:.35"></span><span class="sw" style="background:#ec4899; opacity:.35"></span>column tint = forging node (node1 · node2 · node3)</span>
         <span><span class="sw" style="background:var(--rb)"></span>RB · urgent tx (applied instantly)</span>
+        <span><span class="sw" style="background:var(--good); opacity:.12; outline:1.5px dashed var(--good)"></span>CERT · NO RB TX — Linear Leios certification round; the certificate replaces the RB transaction list, so this is not an empty urgent queue</span>
         <span><span class="sw" style="background:var(--eb)"></span>EB · standard tx + urgent riders · certified</span>
         <span><span class="sw" style="background:var(--eb); opacity:.3; outline:1.5px dashed var(--eb)"></span>EB awaiting votes (doesn't count yet)</span>
         <span><span class="sw" style="background:var(--shed); opacity:.4; outline:1.5px dashed var(--shed)"></span>EB superseded (replaced before certification — its txs are offered back: most ride a later block, the priced-out rest is counted in the journal)</span>
@@ -1181,8 +1191,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // a block publishes becomes the tip the NEXT block builds on, so a block's own
   // step is price[k+1]/price[k]. Attributing it to the causing block (not the
   // one that first shows it) lines the ribbon up with that block's certificate
-  // marker (📥): on a certificate round the patient lane steps and the fast
-  // lane holds, both on the SAME cell.
+  // marker (📥): on a certificate round both lanes re-evaluate their windows
+  // from the certified EB's standard payload and capped urgent-rider sample.
   function realizedSteps(data, field){
     const out = new Map();
     for (let k = 0; k < data.length - 1; k++){
@@ -1204,27 +1214,35 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const lanePanel = (opts) => {
       const {color, price, queue, height, yType, yDomain, yTicks, liveQ, queueThresholdBytes, queueThresholdLabel} = opts;
       const steps = realizedSteps(data, price);
-      const qMax = Math.max(1, ...data.map(b => b[queue]||0));
       const [y0, y1] = yDomain;
-      const yq = q => yType === "log"
-        ? Math.exp(Math.log(y0) + (q/qMax)*(Math.log(y1)-Math.log(y0)))
-        : y0 + (q/qMax)*(y1-y0);
-      // The pool's effective ceiling, in queue terms: where admission stops and
-      // senders are held back. Derived from the live pool reading (whichever of
-      // the byte cap or the diffusion-time budget is the tighter one).
-      const poolCapTxs = (() => {
-        const pool = now.pool; if (!pool) return null;
-        const pfx = queue;                              // "qu" | "qo"
-        const maxPct = Math.max(pool[pfx + "BytePct"] ?? 0, pool[pfx + "TimePct"] ?? 0);
-        const count = now[queue] || 0;
-        if (count > 0 && maxPct > 2) return count * 100 / maxPct;
-        const cap = pool[pfx + "Cap"];
-        return cap ? cap / laneTxBytes(queue === "qu" ? "rb" : "eb", queue === "qu" ? "rbBytes" : "ebBytes") : null;
-      })();
-      const qdata = data.map(b => ({i:b.i, q:yq(b[queue]||0)}));
+      const countField = queue === "qu" ? "rb" : "eb";
+      const bytesField = queue === "qu" ? "rbBytes" : "ebBytes";
+      const txBytes = laneTxBytes(countField, bytesField);
+      const queueBytes = b => b.pool?.[queue + "Bytes"] ?? (b[queue] || 0) * txBytes;
+      const liveBytes = lqLive[queue + "Bytes"] ?? liveQ * txBytes;
+      const poolCapBytes = now.pool?.[queue + "Cap"] ?? null;
+      const queueScaleBytes = Math.max(
+        1,
+        poolCapBytes || 0,
+        ...data.map(queueBytes),
+        liveBytes
+      );
+      const queueFraction = bytes => Math.max(0, Math.min(1, bytes / queueScaleBytes));
+      const yq = bytes => {
+        const fraction = queueFraction(bytes);
+        return yType === "log"
+          ? Math.exp(Math.log(y0) + fraction * (Math.log(y1) - Math.log(y0)))
+          : y0 + fraction * (y1 - y0);
+      };
+      const qdata = data.map(b => ({i:b.i, q:yq(queueBytes(b))}));
       const qnow = qdata[qdata.length-1];
-      const qLiveY = yq(Math.min(liveQ, qMax));
-      const qLabel = `${lqLive.est ? "≈ " : ""}${liveQ.toLocaleString()}`;
+      const qLiveY = yq(liveBytes);
+      const occupancy = poolCapBytes ? 100 * liveBytes / poolCapBytes : null;
+      const occupancyLabel = occupancy == null
+        ? ""
+        : occupancy < 0.1 ? " · <0.1% pool" : ` · ${occupancy.toFixed(1)}% pool`;
+      const qLabel = `${lqLive.est ? "≈ " : ""}${liveQ.toLocaleString()} waiting${occupancyLabel}`;
+      const rightMargin = Math.min(240, Math.max(190, W * 0.22));
       const marks = [
         Plot.gridY({stroke:t.grid}),
         Plot.areaY(qdata, {x:"i", y1:yq(0), y2:"q", fill:color, fillOpacity:0.08, curve:"basis"}),
@@ -1232,28 +1250,23 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         Plot.link([{x1:qnow.i, y1:qnow.q, x2:qnow.i, y2:qLiveY}],
           {x1:"x1", y1:"y1", x2:"x2", y2:"y2", stroke:color, strokeOpacity:0.45, strokeWidth:1, strokeDasharray:"2,2"}),
         Plot.dot([{i:qnow.i, y:qLiveY}], {x:"i", y:"y", fill:color, r:3, stroke:tok("--panel-bg"), strokeWidth:1.2, fillOpacity:0.85}),
-        Plot.text([{i:qnow.i, y:qLiveY}], {x:"i", y:"y", text:[qLabel + " waiting"],
+        Plot.text([{i:qnow.i, y:qLiveY}], {x:"i", y:"y", text:[qLabel],
           dx:8, textAnchor:"start", fill:color, fillOpacity:0.75, fontSize:10.5, fontWeight:600}),
-        ...(poolCapTxs ? (() => {
-          const label = `pool cap ≈ ${Math.round(poolCapTxs).toLocaleString()} tx — senders held back here`;
-          if (poolCapTxs <= qMax * 1.15){
-            const yCap = yq(Math.min(poolCapTxs, qMax));
-            return [
-              Plot.ruleY([yCap], {stroke:color, strokeOpacity:0.4, strokeWidth:1.4, strokeDasharray:"10,4"}),
-              Plot.text([{y:yCap}], {x: () => xDom[1], y:"y", text:[label], dx:-4, dy:-6,
-                textAnchor:"end", fill:color, fillOpacity:0.7, fontSize:9.5}),
-            ];
-          }
-          return [Plot.text([{y: yDomain[1]}], {x: () => xDom[1], y:"y",
-            text:[`pool cap ≈ ${Math.round(poolCapTxs).toLocaleString()} tx (above this view)`],
-            dx:-4, dy:10, textAnchor:"end", fill:color, fillOpacity:0.55, fontSize:9.5})];
+        ...(poolCapBytes ? (() => {
+          const poolCapTxs = poolCapBytes / txBytes;
+          const label = `pool cap ${fmtQueueBytes(poolCapBytes)} · ≈ ${Math.round(poolCapTxs).toLocaleString()} current-size tx`;
+          const yCap = yq(poolCapBytes);
+          return [
+            Plot.ruleY([yCap], {stroke:color, strokeOpacity:0.4, strokeWidth:1.4, strokeDasharray:"10,4"}),
+            Plot.text([{y:yCap}], {x: () => xDom[1], y:"y", text:[label], dx:-4, dy:10,
+              textAnchor:"end", fill:color, fillOpacity:0.7, fontSize:9.5}),
+          ];
         })() : []),
         ...(queueThresholdBytes ? (() => {
-          // The min-fill gate, drawn on the queue's own scale: when the pale
+          // The min-fill gate, drawn against actual queue bytes: when the pale
           // queue area sits BELOW this line, the lane pools instead of
           // issuing its block.
-          const thrTxs = queueThresholdBytes / laneTxBytes("eb", "ebBytes");
-          const yThr = yq(Math.min(thrTxs, qMax));
+          const yThr = yq(queueThresholdBytes);
           return [
             Plot.ruleY([yThr], {stroke:color, strokeOpacity:0.55, strokeWidth:1, strokeDasharray:"6,3"}),
             Plot.text([{y:yThr}], {x: () => xDom[0], y:"y", text:[queueThresholdLabel], dx:4, dy:-6,
@@ -1272,18 +1285,18 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           Plot.text([{y:CTRL.floor}], {x: () => xDom[0], y:"y", text:["floor"], dx:4, dy:-6,
             textAnchor:"start", fill:color, fillOpacity:0.6, fontSize:9.5}));
       const fig = Plot.plot({
-        width: W, height, marginLeft: 64, marginRight: 104, marginBottom: 4, marginTop: 10,
+        width: W, height, marginLeft: 64, marginRight: rightMargin, marginBottom: 4, marginTop: 10,
         style: { background:"transparent", color:t.text, fontSize:"11px" },
         x: { axis: null, domain: xDom },
         y: { type: yType, domain: yDomain, label: null,
              ticks: yTicks, tickFormat: (d)=>adaKb(d) },
         marks,
       });
-      separateRightLabels(fig, [qLabel + " waiting"]);
+      separateRightLabels(fig, [qLabel]);
       attachTip(fig, priceTipHTML);
       // The ribbon: one cell per block, fullness vs the half-full target.
       const rib = Plot.plot({
-        width: W, height: opts.withAxis ? 46 : 20, marginLeft: 64, marginRight: 104,
+        width: W, height: opts.withAxis ? 46 : 20, marginLeft: 64, marginRight: rightMargin,
         marginBottom: opts.withAxis ? 30 : 2, marginTop: 2,
         style: { background:"transparent", color:t.text, fontSize:"11px" },
         x: opts.withAxis
@@ -1293,10 +1306,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         marks: [
           Plot.rect(data, {x1: d => d.i - 0.5, x2: d => d.i + 0.5, y1:0, y2:1,
             fill: d => ribbonFill(steps.get(d.i))}),
-          // Certificate rounds, marked on BOTH ribbons: the patient lane STEPS
-          // here (its endorser block counts), the fast lane HOLDS here (a
-          // certificate applies the patient block, not a ranking block — not an
-          // urgent verdict). Same 📥, opposite behaviour — the mechanism at a glance.
+          // Certificate rounds are marked on both ribbons because the certified
+          // EB contributes a standard-capacity sample and an urgent-rider sample
+          // capped at one ranking-block reservation.
           Plot.text(data.filter(d => d.certIn && d.certIn.hash),
             {x: d => d.i, y: 0.5, text: () => "📥", fontSize: 9,
              title: d => `certificate landed — ${(d.certIn.numTxs||0).toLocaleString()}-tx endorser block counts`}),
@@ -1339,7 +1351,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const cap = document.createElement("div");
     cap.className = "hint";
     cap.style.margin = "2px 0 0";
-    cap.innerHTML = `ribbons = the repricing dial unrolled, one cell per block: <span style="color:var(--live);font-weight:650">red</span> — the ledger stepped this price up (window over the ½ target) · <span style="color:var(--good);font-weight:650">green</span> — stepped down · grey — held (the window sits on the target, or the step is too small to survive integer rounding at low quotes: the controller resting on its equilibrium). <strong>📥 marks a certificate round</strong>: the <span style="color:var(--optimistic);font-weight:650">patient lane steps on its endorser block</span> (the staircase), while the <span style="color:var(--urgent);font-weight:650">fast lane reads an idle reservation</span> and eases a little. Each lane reads a <em>window</em> of recent rounds (5 fast / 20 patient — the CIP's signals), which is why one odd block never whipsaws a price.`;
+    cap.innerHTML = `ribbons = the repricing dial unrolled, one cell per block: <span style="color:var(--live);font-weight:650">red</span> — the ledger stepped this price up (window over the ½ target) · <span style="color:var(--good);font-weight:650">green</span> — stepped down · grey — held (the window sits on the target, or the step is too small to survive integer rounding at low quotes: the controller resting on its equilibrium). <strong>📥 marks a certificate round</strong>: the <span style="color:var(--optimistic);font-weight:650">patient lane adds the certified EB's standard fill against its own capacity</span>, while the <span style="color:var(--urgent);font-weight:650">fast lane adds the EB's urgent-rider usage, capped at one RB reservation</span>. Both controllers then re-evaluate their rolling window (5 fast / 20 patient — the CIP's signals), which is why one odd block never whipsaws a price.`;
     host.append(cap);
   }
 
@@ -1349,20 +1361,20 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const move = m - 1;
     const atFloor = now <= CTRL.floor + 0.5;
     const capped = Math.abs(Math.abs(move) - 1/CTRL.D) < 0.005;
-    let impliedU = CTRL.target + move * (CTRL.target * CTRL.D);  // invert (u-½)/2
+    let impliedU = CTRL.target + move * (CTRL.target * CTRL.D);  // invert (u-½)/8
     impliedU = Math.max(0, Math.min(1, impliedU));
     let dir = move > 0.002 ? "up" : move < -0.002 ? "down" : "flat";
     let why;
     if (dir === "flat"){
-      why = "the previous block ran right at the half-full (50%) target, so the quote held steady.";
+      why = "the current utilisation window is at the half-full (50%) target, so the quote held steady.";
     } else if (atFloor && dir === "down"){
-      why = "barely any demand last block — the quote is resting on its 44 lovelace/byte floor (can't go lower).";
+      why = "the current utilisation window is below target — the quote is resting on its 44 lovelace/byte floor (can't go lower).";
     } else if (capped){
       why = dir === "up"
-        ? "the previous block was packed well past half-full, so the controller jumped the full +6.25% it's allowed in one step."
-        : "the previous block was nearly empty, so the controller cut the full −6.25% it's allowed in one step.";
+        ? "the current utilisation window is full enough for the maximum +6.25% controller step."
+        : "the current utilisation window is empty enough for the maximum −6.25% controller step.";
     } else {
-      why = `the previous block ran ≈${Math.round(impliedU*100)}% full vs the 50% target, so the controller moved the quote ${dir==="up"?"up":"down"} ${Math.abs(move*100).toFixed(0)}% to steer it back.`;
+      why = `the current utilisation window reads ≈${Math.round(impliedU*100)}% vs the 50% target, so the controller moved the quote ${dir==="up"?"up":"down"} ${Math.abs(move*100).toFixed(0)}% to steer it back.`;
     }
     return { m, move, dir, impliedU, why };
   }
@@ -1534,14 +1546,13 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   const NODE_COLORS = {node1:"#3b82f6", node2:"#a855f7", node3:"#ec4899"};
   const nodeColor = n => NODE_COLORS[n] || "var(--muted)";
   const nodeBadge = b => b.node ? ` <span class="hint" style="margin:0">· forged by <strong style="color:${nodeColor(b.node)}">${b.node}</strong></span>` : "";
-  function stepFromFullness(pct){
+  function sampleFromFullness(pct){
     if (pct == null) return null;
-    const step = Math.max(-25, Math.min(25, (pct/100 - 0.5) / 2 * 100));
-    return `ran ${pct < 10 ? pct.toFixed(1) : Math.round(pct)}% full → next step ${step > 0 ? "+" : ""}${step.toFixed(1)}%`;
+    return `ran ${pct < 10 ? pct.toFixed(1) : Math.round(pct)}% full → enters the rolling window`;
   }
   function priceTipHTML(b){
-    const su = b.rbBytes != null ? ` · ${stepFromFullness(rbPct(b))}` : "";
-    const so = b.ebBytes != null && ebTxs(b) ? ` · ${stepFromFullness(ebPct(b))}` : "";
+    const su = b.rbBytes != null ? ` · ${sampleFromFullness(rbPct(b))}` : "";
+    const so = b.ebBytes != null && ebTxs(b) ? ` · ${sampleFromFullness(ebPct(b))}` : "";
     return `<div class="tiphead">block #${b.i}${nodeBadge(b)}</div>`+
       tipRow(tok("--urgent"), "URGENT", `<strong>${adaKb(b.urgent)}</strong> · ${(b.qu??0).toLocaleString()} tx waiting · ${b.rb} tx in block${su}`)+
       tipRow(tok("--optimistic"), "STANDARD", `<strong>${adaKb(b.optimistic)}</strong> · ${(b.qo??0).toLocaleString()} tx waiting · ${b.eb} tx${b.ebUrgent?` + ${b.ebUrgent} riders`:``} in block${so}`);
@@ -1600,10 +1611,14 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   function liveQueues(){
     if (!all.length) return null;
     const last = all[all.length - 1];
-    const base = {qu: last.qu || 0, qo: last.qo || 0, est: false};
+    const base = {
+      qu: last.qu || 0,
+      qo: last.qo || 0,
+      quBytes: last.pool?.quBytes ?? (last.qu || 0) * laneTxBytes("rb", "rbBytes"),
+      qoBytes: last.pool?.qoBytes ?? (last.qo || 0) * laneTxBytes("eb", "ebBytes"),
+      est: false,
+    };
     if (!mempoolLive || mempoolLive.numTxs == null) return base;
-    const delta = mempoolLive.numTxs - (base.qu + base.qo);
-    if (delta === 0) return base;
     let share = 0.5;
     if (runCfg && runCfg.generator === "type1") share = 1;
     else if (typeof actorData !== "undefined" && actorData.length){
@@ -1611,8 +1626,27 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       const buys = (a.urgent || 0) + (a.optimistic || 0);
       if (buys > 0) share = a.urgent / buys;
     }
-    return {qu: Math.max(0, Math.round(base.qu + delta * share)),
-            qo: Math.max(0, Math.round(base.qo + delta * (1 - share))), est: true};
+    // Project a total back onto the two lanes. New inflow follows the current
+    // sender mix; a decrease drains the last known split proportionally.
+    const project = (total, urgent, standard) => {
+      const known = urgent + standard;
+      const delta = total - known;
+      const urgentShare = delta >= 0
+        ? share
+        : (known > 0 ? urgent / known : share);
+      let u = urgent + delta * urgentShare;
+      if (u < 0) u = 0;
+      if (u > total) u = total;
+      u = Math.round(u);
+      return [u, Math.max(0, Math.round(total - u))];
+    };
+    const [qu, qo] = project(mempoolLive.numTxs, base.qu, base.qo);
+    const [quBytes, qoBytes] = mempoolLive.bytes == null
+      ? [base.quBytes, base.qoBytes]
+      : project(mempoolLive.bytes, base.quBytes, base.qoBytes);
+    const unchanged = qu === base.qu && qo === base.qo
+      && quBytes === base.quBytes && qoBytes === base.qoBytes;
+    return unchanged ? base : {qu, qo, quBytes, qoBytes, est: true};
   }
 
   function compTipHTML(b){
@@ -1630,8 +1664,11 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       st === "unknown" ? ` · <span style="color:var(--muted)">certification status unknown</span>` : "";
     const est = pctIsReal(b) ? "" : " (est.)";
     const landed = b.certIn ? `<div style="color:var(--good);font-size:11px;margin-top:2px">📥 a certificate landed here — that endorser block's ${(b.certIn.numTxs||0).toLocaleString()} tx count in THIS block's pricing</div>` : "";
+    const rbLine = b.certIn && !b.rb
+      ? `<strong style="color:var(--good)">CERTIFICATION ROUND · NO RB TX</strong> · Linear Leios puts the certificate here instead of a transaction list · ${(b.qu ?? 0).toLocaleString()} urgent tx still waiting`
+      : `RB · <strong>${rbPct(b)}%</strong> full${est} · ${b.rb} tx, applied instantly`;
     return `<div class="tiphead">block #${b.i}${nodeBadge(b)}</div>`+
-      tipRow(tok("--rb"), "URGENT", `RB · <strong>${rbPct(b)}%</strong> full${est} · ${b.rb} tx, applied instantly`)+
+      tipRow(b.certIn && !b.rb ? tok("--good") : tok("--rb"), "URGENT", rbLine)+
       tipRow(tok("--eb"), "STANDARD", `EB · <strong>${ebPct(b)}%</strong> full${est} · ${b.eb} tx${b.ebUrgent?` + ${b.ebUrgent} urgent riders`:``}${cert}`)+ landed +
       `<div class="tiphint">% of the lane's byte budget · click for the full diary entry</div>`;
   }
@@ -1709,11 +1746,13 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     // the column LOOKS light, but it is the round where those txs land.
     const certArcs = [];
     const delivRects = [];
+    const certIdle = [];
     for (const b of blocks){
       if (!b.certIn || !b.certIn.hash) continue;
       const src = [...blocks].reverse().find(a => a.i < b.i && a.ebHash === b.certIn.hash);
       const n = b.certIn.numTxs || (src ? src.eb + (src.ebUrgent || 0) : 0);
       if (src) certArcs.push({x1: src.i, y1: Math.min(100, ebPct(src)) + 3, x2: b.i, y2: 12, i: b.i, n});
+      if (!b.rb) certIdle.push({x1:b.i-0.42, x2:b.i-0.01, y1:0, y2:100, i:b.i});
       // Only when the column's EB slot is free — a block that both carries
       // the certificate and announces its own EB keeps its announced bar.
       if (src && !ebTxs(b)) delivRects.push({x1: b.i + 0.01, x2: b.i + 0.42, y1: 0, y2: ebPct(src), i: b.i});
@@ -1735,6 +1774,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         }),
         Plot.ruleY([50], {stroke:t.axis, strokeDasharray:"4,3"}),
         Plot.text([{y: 50}], {y:"y", x: xDom[1], text: () => "target ½", dx: 30, fill: t.axis, fontSize: 10}),
+        Plot.rect(certIdle, {x1:"x1", x2:"x2", y1:"y1", y2:"y2",
+          fill: tok("--good"), fillOpacity: 0.10,
+          stroke: tok("--good"), strokeWidth: 1.2, strokeDasharray: "3,2",
+        }),
         Plot.rect(rects.filter(d => d.kind !== "ebwait"), {x1:"x1", x2:"x2", y1:"y1", y2:"y2",
           fill: d => FILL[d.kind], fillOpacity: 0.9,
         }),
@@ -1817,9 +1860,12 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const src = b.certIn && b.certIn.hash ? all.slice(0, idx).reverse().find(a => a.ebHash === b.certIn.hash) : null;
     const delivered = !b.certIn ? "" :
       `③ <span style="color:var(--good)">📥 delivered here: ${(b.certIn.numTxs||0).toLocaleString()} tx</span> — the endorser block${src ? ` announced at <strong>block #${src.i}</strong>` : ``}${src && src.slot != null && b.slot != null ? ` (${b.slot - src.slot} slots ago)` : ``} counts in THIS block's pricing; its urgent riders are charged the standard quote, the excess refunded <span class="hint" style="margin:0">(eb ${b.certIn.hash})</span><br>`;
-    const deliveryNote = b.certIn && b.rb
-      ? ` · <span class="hint" style="margin:0">a certificate rides this block, so these txs settle at the standard quote too (delivery pricing)</span>`
-      : ``;
+    const rbDiary = b.certIn && !b.rb
+      ? `<span style="color:var(--good)"><strong>certification round — no RB transactions</strong></span>`+
+        ` · Linear Leios puts the EB certificate in this RB instead of a transaction list and applies the certified cargo`+
+        ` · ${(b.qu ?? 0).toLocaleString()} urgent tx remain queued`
+      : `<span style="color:var(--rb)">fast lane: ${b.rb} urgent tx</span> · ${kb(b.rbBytes)} = `+
+        `<strong>${rbPct(b)}%</strong> of the 90,112-byte budget — applied first, instantly`;
     const pool = b.pool || {};
     const poolLine = pool.quBytePct != null
       ? ` · pools: urgent ${pool.quBytePct}% of space / ${pool.quTimePct}% of its diffusion window · standard ${pool.qoBytePct}% / ${pool.qoTimePct}%`
@@ -1835,7 +1881,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       `<strong>block #${b.i}</strong>${slotInfo}${nodeBadge(b)}`+
       `<button type="button" class="scenario" style="padding:2px 10px" onclick="this.parentElement.parentElement.style.display='none'">close</button></div>`+
       `<div style="margin-top:4px; line-height:1.8">`+
-      `① <span style="color:var(--rb)">fast lane: ${b.rb} urgent tx</span> · ${kb(b.rbBytes)} = <strong>${rbPct(b)}%</strong> of the 90,112-byte budget — applied first, instantly${deliveryNote}<br>`+
+      `① ${rbDiary}<br>`+
       `② <span style="color:var(--eb)">endorser block: ${total.toLocaleString()} tx</span>${total ? ` (${b.eb.toLocaleString()} standard + ${(b.ebUrgent||0).toLocaleString()} urgent riders) · ${mb(b.ebBytes)} = <strong>${ebPct(b)}%</strong> of the 3 MB budget` : ``} — ${ebLine}<br>`+
       delivered+
       `${delivered ? "④" : "③"} reprice: urgent ${prev?adaKb(prev.urgent)+" → ":""}<strong>${adaKb(b.urgent)}</strong>${pct(du, prev?.urgent)} · `+
@@ -1991,7 +2037,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     if (card) card.classList.toggle("blocked", now);
     if (badge) badge.innerHTML = now ? `⛔ Blocked · ${ceiling} full` : "⛔ Blocked";
   }
-  function updatePoolBar(prefix, pool, lane){
+  function updatePoolBar(prefix, pool, lane, estimated = false){
     const bar = document.getElementById(prefix + "-pool");
     const label = document.getElementById(prefix + "-pool-label");
     if (!bar || !label) return;
@@ -2021,9 +2067,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     // — quoting "103 MB" next to a 36 MB space limit reads as a contradiction.
     const limits = `limits: <strong>${fmtQueueBytes(cap)}</strong> of space · <strong>${budget.toFixed(1)} s</strong> of diffusion time`
       + (timeAsBytes && timeAsBytes < cap ? ` (≈ ${fmtQueueBytes(timeAsBytes)} at today's txs — the tighter ceiling)` : "");
+    const approx = estimated ? "≈ " : "";
     label.innerHTML = pct >= 95
-      ? `holds <strong>${fmtQueueBytes(bytes)}</strong> — <span style="color:var(--live)">${byBytes ? "space" : "time budget"} full, senders are held back until it drains</span> · ${limits}`
-      : `holds <strong>${fmtQueueBytes(bytes)}</strong> (space ${Math.round(bytePct ?? 0)}% · time ${secs.toFixed(2)} s = ${Math.round(timePct ?? 0)}%) · ${limits}`;
+      ? `holds <strong>${approx}${fmtQueueBytes(bytes)}</strong> — <span style="color:var(--live)">${byBytes ? "space" : "time budget"} full, senders are held back until it drains</span> · ${limits}`
+      : `holds <strong>${approx}${fmtQueueBytes(bytes)}</strong> (space ${approx}${Math.round(bytePct ?? 0)}% · time ${secs.toFixed(2)} s = ${Math.round(timePct ?? 0)}%) · ${limits}`;
   }
   function queueStripHtml(blocks){
     // One cell = one block of drain time. Only worth drawing while it is
@@ -2043,15 +2090,17 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   function repriceScale(){
     const dot = document.getElementById("rr-live-dot");
     const note = document.getElementById("rr-live-note");
-    if (!dot || !note || !all.length) return;
+    if (!dot || !note || all.length < 2) return;
     const b = all[all.length - 1];
-    if (b.rbBytes == null){ dot.style.display = "none"; note.style.display = "none"; return; }
-    const fullness = Math.max(0, Math.min(1, b.rbBytes / RB_BYTE_BUDGET));
-    dot.style.display = "";
-    dot.style.left = (fullness * 100) + "%";
-    const step = Math.max(-25, Math.min(25, (fullness - 0.5) / 2 * 100));
+    const prev = all[all.length - 2];
+    const e = explainStep(prev.urgent, b.urgent);
+    const floorGuard = b.urgent <= CTRL.floor && Math.abs(e.move) < 0.002;
+    dot.style.display = floorGuard ? "none" : "";
+    if (!floorGuard) dot.style.left = (e.impliedU * 100) + "%";
     note.style.display = "";
-    note.textContent = `▲ the fast lane right now: block ${Math.round(fullness*100)}% full → next step ${step > 0 ? "+" : ""}${step.toFixed(1)}%`;
+    note.textContent = floorGuard
+      ? `fast lane: the 44 lovelace/byte floor guard is active; the quote cannot step lower`
+      : `fast lane's latest controller decision: window ≈${Math.round(e.impliedU*100)}% full → ${prev.urgent} to ${b.urgent} lovelace/byte (${e.move >= 0 ? "+" : ""}${(e.move*100).toFixed(1)}%)`;
   }
 
   function readout(){
@@ -2135,21 +2184,28 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     // lives in the History chart, not here. The gauge shows how full the NEXT
     // block will run from the current queue; past the 1/2 tick, the price
     // steps up on the next block.
-    const uQBytes = (b.pool && b.pool.quBytes != null) ? b.pool.quBytes
-      : lqNow.qu * laneTxBytes("rb", "rbBytes");
+    const uQBytes = lqNow.quBytes ?? lqNow.qu * laneTxBytes("rb", "rbBytes");
     const uBlocks = uQBytes / RB_BYTE_BUDGET;
     set("u-sub", lqNow.qu
       ? `the mempool holds <strong>${(lqNow.est ? "≈ " : "") + lqNow.qu.toLocaleString()}</strong> tx (${fmtQueueBytes(uQBytes)})${trend(lqNow.qu, prev?.qu)} — enough for <strong>≈ ${uBlocks >= 1 ? Math.round(uBlocks).toLocaleString() : uBlocks.toFixed(1)}</strong> ranking block${uBlocks >= 1.5 ? "s" : ""}`
       : `the mempool is empty — the next ranking block rides on fresh arrivals`);
 
-    updatePoolBar("u", b.pool, "qu");
+    const livePool = b.pool ? {...b.pool} : null;
+    if (livePool && lqNow.quBytes != null && livePool.quCap){
+      livePool.quBytes = lqNow.quBytes;
+      livePool.quBytePct = 100 * lqNow.quBytes / livePool.quCap;
+    }
+    if (livePool && lqNow.qoBytes != null && livePool.qoCap){
+      livePool.qoBytes = lqNow.qoBytes;
+      livePool.qoBytePct = 100 * lqNow.qoBytes / livePool.qoCap;
+    }
+    updatePoolBar("u", livePool, "qu", lqNow.est);
     set("u-wait", `⏱ ${uWait.line}`);
     set("u-strip", queueStripHtml(uWait.blocks));
     set("o-price", adaKb(b.optimistic));
     set("o-unit", `per KB · ${b.optimistic.toLocaleString()} lovelace/byte`);
     set("o-trend", trend(b.optimistic, prev?.optimistic));
-    const oQBytes = (b.pool && b.pool.qoBytes != null) ? b.pool.qoBytes
-      : lqNow.qo * laneTxBytes("eb", "ebBytes");
+    const oQBytes = lqNow.qoBytes ?? lqNow.qo * laneTxBytes("eb", "ebBytes");
     const oBlocks = oQBytes / EB_BYTE_BUDGET;
     // Giorgos's min-fill rule: below half a ranking block's worth, the round
     // withholds its endorser block and the lane pools — say so, or an empty
@@ -2161,7 +2217,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       ? `the mempool holds <strong>${(lqNow.est ? "≈ " : "") + lqNow.qo.toLocaleString()}</strong> tx (${fmtQueueBytes(oQBytes)})${trend(lqNow.qo, prev?.qo)} — the next endorser block would run <strong>${oBlocks >= 1.5 ? "≈ full — and " + (oBlocks >= 2.5 ? Math.round(oBlocks - 1) + " more behind it" : "another behind it") : oBlocks >= 0.95 ? "≈ full" : "≈ " + Math.max(1, Math.round(oBlocks * 100)) + "%"}</strong>`
       : `the mempool is empty — the next endorser block rides on fresh arrivals`) + pooling + cert);
 
-    updatePoolBar("o", b.pool, "qo");
+    updatePoolBar("o", livePool, "qo", lqNow.est);
     set("o-wait", `⏱ ${oWait.line}`);
     set("o-strip", queueStripHtml(oWait.blocks));
   }
@@ -2250,10 +2306,13 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           : ` · <span style="color:var(--live)">EB ⏳ awaiting votes</span>`) :
         st === "superseded" ? ` · <span style="color:var(--shed)">EB ↷ superseded</span>` :
         st === "missed" ? ` · <span style="color:var(--live)">EB ✖ certification stalled</span>` : "") + certLanded;
+      const rbBadge = b.certIn && !b.rb
+        ? `<span style="color:var(--good)"><strong>CERT · NO RB TX</strong> — certificate replaces the RB transaction list</span>`
+        : `<span style="color:var(--rb)">RB ${rbPct(b)}% full · ${b.rb} urgent tx</span>`;
       rows.push(
         `<div style="padding:5px 0;border-bottom:1px solid var(--border,#eee)">`+
         `<strong>block #${b.i}</strong>${nodeBadge(b)} · `+
-        `<span style="color:var(--rb)">RB ${rbPct(b)}% full · ${b.rb} urgent tx</span> · `+
+        rbBadge + ` · `+
         (sameEb
           ? `<span style="color:var(--eb)">EB — the same endorser block, still in flight</span>`
           : `<span style="color:var(--eb)">EB ${ebPct(b)}% full · ${b.eb} standard tx${b.ebUrgent?` + ${b.ebUrgent} riders`:``}</span>`)+
@@ -2431,7 +2490,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // run-config.json (written by the runner) tells the page what is actually running.
   const EVGEN_EXPLAIN = {
     off:   "Nothing forced right now — only the regular crowd of senders.",
-    type1: "Floods the fast lane with max fees set just above today's price (×1.10); the burst's own full blocks push the quote past them within a block or two — before the next endorser block could take them aboard — and their queued txs are dropped.",
+    type1: "Floods the lane currently setting max-fee validity with independent transactions funded one controller step ahead. Sustained fill moves that quote again, so the remaining backlog is repriced out with BidBelowQuote.",
     type2: "Sends pairs of txs fighting over one coin — first-come keeps it, the late urgent tx is turned away at the door.",
     type3: "Silences the certification committee — everything riding the endorser blocks, patient txs and urgent riders alike, freezes until you flip back to Quiet."
   };
@@ -2439,7 +2498,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // Same shape as the crowd scenarios: one chip = one situation, spec upfront.
   const EVGEN_SCENARIOS = [
     { mode:"off",   name:"Quiet",              spec:"no forced trouble" },
-    { mode:"type1", name:"Price squeeze",      spec:"urgent burst · max fees just above today's price" },
+    { mode:"type1", name:"Price squeeze",      spec:"dominant-lane burst · one-step fee headroom" },
     { mode:"type2", name:"Coin clash",         spec:"pairs of txs · one coin" },
     { mode:"type3", name:"Certification miss", spec:"committee silenced" },
   ];
@@ -2585,14 +2644,23 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   const cmdJournal = [];                      // newest first, this session's commands
   let lifecycleGens = {};                     // label -> live counters from lifecycle.json
   let journalRows = [];                       // rows currently rendered (modal lookup)
+  let actorPostChain = Promise.resolve();      // preserve click order; the newest command must win
   function queueCommand(desc, kind, mode){ pendingCmdDesc = {desc, kind: kind || "crowd", mode: mode || null}; }
   function startCommand(desc){
+    // A command is an explicit request to watch the live system move. Leaving
+    // History frozen here makes a healthy feeder look dead in the journals.
+    if (paused){
+      paused = false;
+      syncChartToolbar();
+    }
     cmdSeq += 1;
     cmdLabel = ("c" + String(cmdSeq).padStart(2, "0") + "-" + desc)
       .replace(/[^A-Za-z0-9%~./-]+/g, "_").slice(0, 44) + "." + CMD_SESSION;
-    cmdJournal.unshift({label: cmdLabel, desc, at: new Date()});
+    const command = {label: cmdLabel, desc, at: new Date(), state: "queued"};
+    cmdJournal.unshift(command);
     if (cmdJournal.length > 12) cmdJournal.pop();
     renderCrowdJournal();
+    return command;
   }
   // The pressure stream is independent of the crowd: a scenario note never
   // opens a crowd generation — it only marks the ⚡ journal's timeline.
@@ -2623,7 +2691,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   let lastRunMark = null;
   function forgetJournalsOnNewRun(){
     if (!all.length) return;
-    const mark = JSON.stringify(all[0]);
+    const mark = runCfg?.runId || JSON.stringify(all[0]);
     if (mark === lastRunMark) return;
     lastRunMark = mark;
     try {
@@ -2661,20 +2729,23 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   }
   // The squeeze burst's arithmetic, from the runner's published spec: what each
   // burst tx bids, the per-byte threshold that implies, and where the live
-  // urgent quote stands against it.
+  // controlling quote stands against it.
   function squeezeMath(){
     if (!runCfg || !runCfg.t1Bid) return "";
     // The ledger's quote = fixed fee + rate x size (minFeeB = 155,381 on this
     // devnet), so the crossing rate must net the fixed part out of the bid.
     const MIN_FEE_LOVELACE = 155381;
     const thr = Math.round((runCfg.t1Bid - MIN_FEE_LOVELACE) / runCfg.t1TxBytes);
-    const quote = (typeof all !== "undefined" && all.length) ? all[all.length - 1].urgent : null;
+    const lane = runCfg.t1Lane === "optimistic" ? "standard" : "urgent";
+    const quote = (typeof all !== "undefined" && all.length)
+      ? all[all.length - 1][runCfg.t1Lane === "optimistic" ? "optimistic" : "urgent"]
+      : null;
     const bidAda = (runCfg.t1Bid / 1e6).toFixed(1);
     const kb = (runCfg.t1TxBytes / 1000).toFixed(1);
     return `each burst tx caps at ₳${bidAda} for ${kb} KB ≈ ${thr.toLocaleString()} lovelace/byte — ` +
-      (quote === null ? `they drop once the urgent quote passes that.`
-        : quote > thr ? `the urgent quote (${quote.toLocaleString()}) is past it: drops are firing.`
-        : `they drop once the urgent quote (now ${quote.toLocaleString()}) climbs past ${thr.toLocaleString()}.`);
+      (quote === null ? `they drop once the ${lane} quote passes that.`
+        : quote > thr ? `the ${lane} quote (${quote.toLocaleString()}) is past it: drops are firing.`
+        : `they drop once the ${lane} quote (now ${quote.toLocaleString()}) climbs past ${thr.toLocaleString()}.`);
   }
   function pressureDropCount(row){
     return pressureDropEvents(row).reduce((s, e) =>
@@ -2697,8 +2768,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     if (g.returned) parts.push(`💸↩ ${g.returned.toLocaleString()} priced out on return`);
     return parts;
   }
-  function journalCounts(g){
-    if (!g) return `<span class="hint">no txs yet</span>`;
+  function journalCounts(g, emptyState){
+    if (!g) return `<span class="hint">${escapeHtml(emptyState || "waiting for the first transaction…")}</span>`;
     const walk = g.shed ? ` · walked away ${g.shed.toLocaleString()}` : "";
     const dropped = (g.evicted || 0) + (g.orphaned || 0) + (g.flushed || 0) + (g.stranded || 0) + (g.returned || 0);
     return `sent ${g.sent.toLocaleString()} ` +
@@ -2718,8 +2789,16 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     if (!host) return;
     const known = new Set(cmdJournal.map(c => c.label));
     const rows = [];
-    for (const c of cmdJournal)
-      rows.push({label: c.label, desc: c.desc, at: c.at, g: lifecycleGens[c.label]});
+    for (let i = 0; i < cmdJournal.length; i++){
+      const c = cmdJournal[i];
+      let emptyState = "waiting for the feeder's first transaction…";
+      if (c.state === "queued") emptyState = "queued behind the preceding command…";
+      else if (c.state === "applying") emptyState = "applying to the live feeder…";
+      else if (c.state === "failed") emptyState = "not applied — this address cannot drive the feeder";
+      else if (i > 0 && cmdJournal.slice(0, i).some(n => n.state === "active"))
+        emptyState = "superseded before the feeder emitted a transaction";
+      rows.push({label: c.label, desc: c.desc, at: c.at, g: lifecycleGens[c.label], emptyState});
+    }
     // Generations from before this page session (reloads, other tabs): show a
     // human name, not the raw label.
     const humanize = label => label === "warmup"
@@ -2757,7 +2836,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       `<div class="cmdrow" data-idx="${idx}" style="border-bottom:1px dashed var(--border); padding:2px 0; cursor:pointer" title="click for details">` +
       `<span style="color:var(--muted)">${rangeLabel(r)}</span> ` +
       `<b>${escapeHtml(r.desc)}</b><br>` +
-      `<span style="font-variant-numeric:tabular-nums">${journalCounts(r.g)}</span></div>`
+      `<span style="font-variant-numeric:tabular-nums">${journalCounts(r.g, r.emptyState)}</span></div>`
     ).join("");
     // Rewrite only on change: replacing the rows between a click's press and
     // release detaches its target and the click never reaches the handler.
@@ -3035,8 +3114,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     if (row.mode === "type1"){
       const m = squeezeMath();
       html += `<p class="hint" style="margin:0 0 8px">${m ? "<strong>The numbers:</strong> " + m + " " : ""}` +
-        `<strong>Why blocks look small meanwhile:</strong> each burst tx is fat (~${runCfg && runCfg.t1TxBytes ? (runCfg.t1TxBytes/1000).toFixed(1) : "10.3"} KB — ×30+ a normal payment),
-        so a handful fills the ranking block's 90,112-byte budget. The charts count txs, so a byte-full block draws a
+        `<strong>Why blocks can look small meanwhile:</strong> each burst tx is fat (~${runCfg && runCfg.t1TxBytes ? (runCfg.t1TxBytes/1000).toFixed(1) : "10.3"} KB — ×30+ a normal payment),
+        so a small count consumes a large share of its delivery block's byte budget. The charts count txs, so a byte-full block draws a
         short bar — and the queue climbs because the burst pours in more bytes than one block can drain.</p>`;
     }
     if (row.mode === "type1" || row.mode === "type2"){
@@ -3078,13 +3157,18 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
         `</div></div>`;
       if (row.mode === "type1"){
         const all_ = await evictedTxDetails(row);
-        const details = all_ ? all_.filter(d => d.burst !== false) : null;   // old records: no tag, keep
-        const crowdHit = all_ ? all_.length - (details ? details.length : 0) : 0;
+        const queued = all_ ? all_.filter(d => d.burst !== false) : null;   // old records: no tag, keep
+        const refused = pressureDropEvents(row)
+          .filter(e => e.stage === "rejected" && e.bidBelowQuote && e.txid)
+          .map(e => ({...e, _when:e._rx, waitedS:e.waitedS ?? 0, burst:true}));
+        const details = queued ? [...queued, ...refused].sort((a,b) => a._when-b._when) : refused;
+        const crowdHit = all_ ? all_.length - (queued ? queued.length : 0) : 0;
         if (details && details.length){
           const newest = details.slice(-30).reverse();
           html += `<div style="border-top:1px solid var(--border); padding-top:8px; margin-top:8px">` +
             `<strong>The txs, one by one</strong> <span class="hint" style="margin:0">— the ledger's own verdict for each
-            (its max fee vs what the lane charged for its size when the climbing quote crossed it), and how long it waited.</span>` +
+            (its max fee vs what the lane required when the climbing quote crossed it), including queued evictions and
+            refusals at admission.</span>` +
             `<div class="evlog" style="margin-top:6px">` + newest.map(d => evictedTxLine(d, row.at.getTime())).join("") +
             (details.length > newest.length ? `<div class="hint" style="margin:4px 0 0">…and ${details.length - newest.length} more in this window.</div>` : "") +
             (crowdHit ? `<div style="margin-top:6px"><strong>${crowdHit.toLocaleString()}</strong> of the <em>crowd's</em> txs were priced out by the same climb <span class="hint" style="margin:0">— the squeeze's collateral: ordinary senders paid the price of the burst's pressure.</span></div>` : "") +
@@ -3457,25 +3541,48 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   };
   // The fine-tune sliders are gone: the crowd is driven by named commands only
   // (who sends · how hard they push · who picks the lane).
-  async function postActorConfig(){
-    if (pendingCmdDesc){ startCommand(pendingCmdDesc.desc, pendingCmdDesc.kind, pendingCmdDesc.mode); pendingCmdDesc = null; }
-    try {
-      const body = {...actorConfig, ...(demandPace !== null ? {delayMs: demandPace} : {})};
-      if (mixTouched) body.laneMix = laneMix;   // null = server deletes the key (senders decide); untouched = leave it alone
-      body.metadataBytes = scenarioPayloadBytes; // per-scenario tx size; null = back to the feeder's default
-      if (cmdLabel) body.label = cmdLabel;
-      const res = await fetch("/actor-config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
-      if (!res.ok) throw new Error("post failed");
-      document.getElementById("control-note").textContent = "✓ applied to the live feeder";
-    } catch(e){
-      document.getElementById("control-note").textContent = "(read-only — run via run-dijkstra-live-demo.sh to change it live)";
-      // The journal opened this generation optimistically — mark it dead so it
-      // doesn't sit there promising txs that can never arrive.
-      if (cmdJournal.length && !cmdJournal[0].desc.includes("not applied")){
-        cmdJournal[0].desc += " · ✗ not applied — this copy can't drive the demo";
-        renderCrowdJournal();
-      }
+  function refreshLifecycleUntilSeen(label, attempt){
+    const n = attempt || 0;
+    setTimeout(async () => {
+      await pollLifecycle();
+      if (!lifecycleGens[label] && n < 11) refreshLifecycleUntilSeen(label, n + 1);
+    }, n === 0 ? 150 : 500);
+  }
+  function postActorConfig(){
+    let command = null;
+    if (pendingCmdDesc){
+      command = startCommand(pendingCmdDesc.desc, pendingCmdDesc.kind, pendingCmdDesc.mode);
+      pendingCmdDesc = null;
     }
+    // Capture this click's complete payload now. Later clicks may mutate the
+    // controls while this request waits its turn in actorPostChain.
+    const body = {...actorConfig, ...(demandPace !== null ? {delayMs: demandPace} : {})};
+    if (mixTouched) body.laneMix = laneMix;   // null = server deletes the key (senders decide); untouched = leave it alone
+    body.metadataBytes = scenarioPayloadBytes; // per-scenario tx size; null = back to the feeder's default
+    if (command) body.label = command.label;
+    else if (cmdLabel) body.label = cmdLabel;
+
+    const apply = async () => {
+      if (command){ command.state = "applying"; renderCrowdJournal(); }
+      try {
+        const res = await fetch("/actor-config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+        if (!res.ok) throw new Error("post failed");
+        if (command){
+          command.state = "active";
+          renderCrowdJournal();
+          refreshLifecycleUntilSeen(command.label);
+        }
+        document.getElementById("control-note").textContent = "✓ applied to the live feeder";
+      } catch(e){
+        document.getElementById("control-note").textContent = "(read-only — run via run-dijkstra-live-demo.sh to change it live)";
+        if (command){
+          command.state = "failed";
+          renderCrowdJournal();
+        }
+      }
+    };
+    actorPostChain = actorPostChain.catch(() => {}).then(apply);
+    return actorPostChain;
   }
   async function loadActorConfig(){
     try {
@@ -3508,33 +3615,33 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // senders are), the traffic (delayMs) and the lane policy (laneMix; null =
   // the senders choose economically). The spec on each chip says it upfront.
   const SCENARIOS = [
-    { name:"Calm day", spec:"~33 tx/s · senders decide",
-      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:30, laneMix:null,
+    { name:"Calm day", spec:"~5 tx/s · senders decide",
+      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:200, laneMix:null,
       watch:"The baseline: a calm, balanced crowd choosing its own lanes. Both quotes drift toward the floor and queues stay shallow." },
-    { name:"Rush hour", spec:"~250 tx/s · urgent-leaning, price-aware",
-      config:{honest:60,patient:0,impatient:40,valueMinAda:1,valueMaxAda:30,urgencyMin:0.05,urgencyMax:0.4}, delayMs:4, laneMix:null,
+    { name:"Rush hour", spec:"~100 tx/s · urgent-leaning, price-aware",
+      config:{honest:30,patient:0,impatient:70,valueMinAda:5,valueMaxAda:60,urgencyMin:0.10,urgencyMax:0.80}, delayMs:10, laneMix:null, metadataBytes:2300,
       watch:"A busy crowd leaning urgent — but most senders weigh the price. Watch the <strong>urgent queue</strong> spike between announcements, the <strong>urgent quote</strong> climb to ration it, and then find its <strong>plateau</strong>: as it climbs, the marginal senders shift patient or walk away. The overflow rides the endorser blocks as riders, charged the standard rate." },
-    { name:"Sticker shock", spec:"~250 tx/s · price-elastic",
-      config:{...ACTOR_PRESETS["Bargain hunters"]}, delayMs:4, laneMix:null,
+    { name:"Sticker shock", spec:"~67 tx/s · price-elastic",
+      config:{...ACTOR_PRESETS["Bargain hunters"]}, delayMs:15, laneMix:null,
       watch:"Heavy traffic of price-sensitive senders. As the urgent quote climbs they shift to the patient lane or walk away — elasticity, live." },
-    { name:"Lazy Sunday", spec:"~33 tx/s · ~90% standard (their choice)",
-      config:{...ACTOR_PRESETS["Patient crowd"]}, delayMs:30, laneMix:null,
+    { name:"Lazy Sunday", spec:"~5 tx/s · ~90% standard (their choice)",
+      config:{...ACTOR_PRESETS["Patient crowd"]}, delayMs:200, laneMix:null,
       watch:"Nearly everyone rides the cheap patient lane. The urgent lane empties and its quote decays toward the 44 lovelace/byte floor — no cross-lane floor holds it up; the lanes can even cross." },
-    { name:"Bulk night", spec:"~250 tx/s · 85% standard (forced) · fat 6 KB txs",
-      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:4, laneMix:0.85, metadataBytes:6000,
-      watch:"The scenario forces 85% of txs onto the patient lane, 6 KB each. Watch the endorser blocks genuinely fill — past the half-full target the <strong>standard quote</strong> finally leaves its floor — and certification become the pace-setter. (Combine with ⚡ Certification miss to freeze it.)" },
-    { name:"Urgent storm", spec:"max tx/s · 100% urgent (forced) · fat 6 KB txs",
-      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:0, laneMix:0, metadataBytes:6000,
-      watch:"Every tx force-fed into the fast lane, as fast as the node accepts, 6 KB each. Watch the ranking blocks saturate (~14 fat txs fill one), the urgent quote ration hard, the overflow ride the endorser blocks as riders — and the bytes outrun even that drain, so the urgent POOL itself fills toward its ceilings until senders are held back at the door." },
-    { name:"Standard storm", spec:"max tx/s · 100% standard (forced) · fat 12 KB txs",
-      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:0, laneMix:1, metadataBytes:12000,
-      watch:"Every tx force-fed into the patient lane, as fast as the node accepts — and each one carries a fat 12 KB payload, so the bytes pour in far faster than even a 3 MB endorser block drains them. Watch the EBs pin at 100%, the queue balloon, and certification set the pace." },
-    { name:"Flood", spec:"max tx/s · 50/50 (forced) · fat 6 KB txs",
-      config:{...ACTOR_PRESETS["Balanced"]}, delayMs:0, laneMix:0.5, metadataBytes:6000,
-      watch:"As fast as the node accepts, force-fed 50/50 — and each tx carries 6 KB, so the bytes pour in faster than the endorser blocks drain them. Watch both queues build across the 200 MB pools, both quotes climb, and backpressure hold the senders back only at the true ceilings — the mempool defends itself." },
-    { name:"High tide", spec:"max tx/s · 50/50 (forced) · fat 12 KB txs · ceiling bids — fill the pools themselves",
-      config:{...ACTOR_PRESETS["Balanced"], feeBuffer:0}, delayMs:0, laneMix:0.5, metadataBytes:12000,
-      watch:"The tide rises faster than any block can drain it — fat txs bidding the <strong>fee ceiling</strong>, so the climbing quotes cannot evict a single one. Watch the endorser blocks pin at 100% round after round, both <strong>pools</strong> climb toward their 200 MB and diffusion-time ceilings, and — at the brim — the crowd get <strong>held back at the door</strong> (🚪): backpressure, not loss. Ease off and the pools drain in order." },
+    { name:"Bulk night", spec:"~100 tx/s · 85% standard (forced) · fat 6 KB txs · ceiling bids",
+      config:{...ACTOR_PRESETS["Balanced"], feeBuffer:0}, delayMs:10, laneMix:0.85, metadataBytes:6000,
+      watch:"The scenario forces 85% of txs onto the patient lane, 6 KB each, with ceiling bids so its own repricing cannot evict the workload. Watch announced EBs fill; once those payloads certify, the amber application samples enter the 20-block standard signal. Combine with <strong>Certification miss</strong> to freeze delivery and make the patient queue accumulate." },
+    { name:"Urgent storm", spec:"~50 tx/s · 100% urgent (forced) · fat 6 KB txs · ceiling bids",
+      config:{...ACTOR_PRESETS["Balanced"], feeBuffer:0}, delayMs:20, laneMix:0, metadataBytes:6000,
+      watch:"Every transaction is force-fed into the fast lane with a ceiling bid, at a sustained rate above ranking-block capacity, 6 KB each. Ranking blocks remain full while the urgent quote rises; overflow can board an endorser block as urgent riders. This is the sustained-capacity test. Use <strong>Price squeeze</strong>, not this workload, to prove underpriced eviction." },
+    { name:"Patient saturation", spec:"~67 tx/s · 100% patient (forced) · fat 12 KB txs · ceiling bids",
+      config:{...ACTOR_PRESETS["Balanced"], feeBuffer:0}, delayMs:15, laneMix:1, metadataBytes:12000,
+      watch:"Every transaction is force-fed into the patient lane with a ceiling bid and a fat 12 KB payload. Add <strong>Certification miss</strong>: the 30 MB patient pool reaches its admission limit in roughly 35–40 seconds while certified delivery is stalled. Return to <strong>Quiet</strong>: certificates land again, the full EB samples enter the controller window, and History shows the standard quote step upward." },
+    { name:"Flood", spec:"~67 tx/s · 50/50 (forced) · fat 6 KB txs · ceiling bids",
+      config:{...ACTOR_PRESETS["Balanced"], feeBuffer:0}, delayMs:15, laneMix:0.5, metadataBytes:6000,
+      watch:"Traffic is force-fed 50/50 at a sustained rate with ceiling bids and 6 KB payloads. Watch full ranking blocks, full eligible endorser blocks, both queue projections, and each quote's separate signal. Because bids remain valid, any pause now comes from chain or pool backpressure rather than <code>BidBelowQuote</code>." },
+    { name:"High tide", spec:"~100 tx/s · 50/50 (forced) · fat 12 KB txs · ceiling bids",
+      config:{...ACTOR_PRESETS["Balanced"], feeBuffer:0}, delayMs:10, laneMix:0.5, metadataBytes:12000,
+      watch:"The highest sustained mixed load: 12 KB transactions bidding the <strong>fee ceiling</strong>, so climbing quotes cannot evict them. In the live cards, inspect pool bytes and diffusion time; in History, verify that ranking blocks and eligible endorser blocks repeatedly hit 100%. To demonstrate a pool reaching its admission limit, combine a one-lane storm with <strong>Certification miss</strong>, then return to Quiet and watch it drain." },
     { name:"Ghost town", spec:"nobody sends · a stray tx every ~15 s",
       config:{...ACTOR_PRESETS["Balanced"]}, delayMs:15000, laneMix:null,
       watch:"Demand stops. Watch both quotes ease back toward the floor (−6.25% a block), the queues drain, and blocks run near-empty — the mechanism at rest." },

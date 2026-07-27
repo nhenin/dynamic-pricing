@@ -1,7 +1,3 @@
-
-
-https://github.com/user-attachments/assets/eb5396ba-a0b3-4c86-8960-3bae4db0bf99
-
 # Two-lane dynamic pricing on Cardano — prototype & live demo
 
 A working prototype of **dynamic, two-lane transaction pricing** for Cardano
@@ -16,7 +12,7 @@ git clone --recursive git@github.com:nhenin/dynamic-pricing.git
 git submodule update --init --recursive
 ```
 
-## The walkthrough (8 min)
+## The walkthrough (8 min 50 s)
 
 
 
@@ -82,7 +78,7 @@ The rest of the mechanism, in the same spirit:
   same coin, the one admitted first keeps it — an admitted transaction is
   never displaced.
 - **Per-lane pools:** each lane has its own admission ceilings (bytes *and* an
-  expected-diffusion-time budget), each pool ~200 MB deep. Since the lanes'
+  expected-diffusion-time budget), each pool ~30 MB deep. Since the lanes'
   FIFO merge, the announced endorser block still drains the urgent pool every
   round — depth costs wait, not correctness — and a storm queues and REPRICES
   instead of bouncing at the door. Only past the ceilings are senders held
@@ -113,6 +109,13 @@ comments) of the `nicolas/dynamic-pricing` branch versus its upstream base.
 ## Running the demo
 
 Prerequisites: **nix** (with flakes), ~16 GB RAM, macOS or Linux.
+
+```bash
+./launch-demo.sh
+```
+
+The wrapper builds the node and feeder, then starts the 3-node devnet and
+dashboard. The equivalent manual steps are:
 
 ```bash
 # 1. Build the node and the lane feeder (one cabal project; first build is long)
@@ -147,9 +150,10 @@ block 0).
 Everything is on the page, in plain language, but the short tour:
 
 - **👥 The crowd** — one click picks a complete crowd (who sends, how fast,
-  which lanes): `Calm day`, `Rush hour`, `Urgent storm`, `Optimistic storm`
-  (fat 12 KB payloads), `Ghost town`… The 🧾 journal tracks what became of
-  every generation's transactions (sent → waiting → forged/dropped).
+  which lanes): `Calm day`, `Rush hour`, `Urgent storm`, `Patient saturation`
+  (fat 12 KB payloads), `Flood`, `High tide`, `Ghost town`… The 🧾 journal
+  tracks what became of every generation's transactions (sent → waiting →
+  forged/dropped).
 - **⚡ The pressure** — trouble on demand, on top of the crowd: `Price
   squeeze` (a burst bidding just above today's price — watch the climbing
   quote drop its own transactions, with the ledger's per-transaction verdict
@@ -162,20 +166,24 @@ Everything is on the page, in plain language, but the short tour:
   one lane's waiting transactions (no restart), or reboot the whole network
   to a fresh chain from the page.
 
-## What's real, what's simulated
+## What's implemented, what's generated
 
 - **Ledger** — the five rules + the controller, `-Werror`-clean, unit-tested.
 - **Mempool** — per-lane admission, O(1) urgent ingress (measured 446 tx/s),
   exact eviction-on-price-rise (traced per transaction), the min-fill rule —
   all verified on the live network.
-- **Simulated piece** — the endorser-block *certificate*: the committee's
-  votes are cast and counted by the prototype itself (that is what the
-  Certification-miss scenario switches off). Everything else on screen —
-  prices, queues, blocks, evictions — is the real ledger and the real mempool.
+- **Linear Leios** — the three pools cast and trace their votes, quorum
+  produces the certificate, and certified endorser blocks are applied by the
+  running protocol. `Certification miss` withholds those votes at source; it
+  does not fabricate a certificate or a ledger outcome.
+- **Generated demand** — synthetic sender actors read the live quotes and
+  choose urgent, standard, or no transaction. They drive repeatable scenarios;
+  the resulting admission, blocks, prices, evictions and settlement are the
+  real node and ledger paths.
 - **Demo calibrations** — a block every ~5 s (activeSlotsCoeff 0.2, so
   certificates land in seconds instead of waiting out the leadership
   lottery); diffusion-time budget 60 s split 1/4 urgent / 3/4 patient; each
-  pool ~200 MB deep, so a storm queues and REPRICES instead of bouncing at
+  pool ~30 MB deep, so a storm queues and REPRICES instead of bouncing at
   the door. All are parameters, not constants.
 
 ## How this maps to the CIP
@@ -206,8 +214,3 @@ announcement threshold, and the K = 10 announcement age escape.
   block carries one of them twice. Verified on the live network:
   thousands of riders per EB, identical strip counts on all three nodes,
   certificates applying round after round.
-
-One simplification remains — the certificates (see *What's real, what's
-simulated*). It does not touch what the prototype demonstrates: the lane
-rules, the repricing and the settlement running in the real ledger and
-node.
