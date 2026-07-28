@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:," />
   <title>Two-Lane Dynamic Pricing — Live Proto-Devnet</title>
   <style>
     :root {
@@ -44,6 +45,9 @@
     .alert .body strong { color:var(--eb); }
     .alert .x { cursor:pointer; color:var(--muted); border:none; background:none; font-size:17px; padding:0 2px; line-height:1; }
     .alert code { background:rgba(127,127,127,0.14); padding:0 4px; border-radius:3px; }
+    .alert.feeder { border-color:var(--urgent); border-left-color:var(--urgent);
+      background:color-mix(in srgb, var(--urgent) 8%, var(--panel-bg)); }
+    .alert.feeder .body strong { color:var(--urgent); }
 
     .kpis { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
     .kpi { flex:1; min-width:140px; border:1px solid var(--border); border-left:3px solid var(--accent,var(--muted));
@@ -256,6 +260,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
 /* the "right now" cards */
 .nowgrid{display:grid;grid-template-columns:auto 1fr 1fr;gap:12px;align-items:stretch;margin-top:6px}
 @media (max-width: 900px){ .nowgrid{grid-template-columns:1fr} }
+@media (max-width: 900px){ #incgrid{grid-template-columns:1fr!important} }
 .nowblock{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;
   padding:14px 22px;border:1.5px solid var(--border);border-radius:12px;min-width:130px}
 .nowblock .n{font-size:26px;font-weight:750;font-variant-numeric:tabular-nums}
@@ -337,7 +342,12 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     </div>
   </header>
 
-  <!-- ===== LANE HEALTH NOTICE: surfaces a stalled demo feeder honestly ===== -->
+  <!-- ===== FEEDER NOTICES: startup progress and genuine stalls ===== -->
+  <div id="feeder-alert" class="alert feeder" role="status">
+    <span class="ico">●</span>
+    <div class="body" id="feeder-alert-body"></div>
+  </div>
+
   <div id="lane-alert" class="alert" role="status">
     <span class="ico">⚠️</span>
     <div class="body" id="lane-alert-body"></div>
@@ -1654,9 +1664,23 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       return [u, Math.max(0, Math.round(total - u))];
     };
     const [qu, qo] = project(mempoolLive.numTxs, base.qu, base.qo);
-    const [quBytes, qoBytes] = mempoolLive.bytes == null
+    let [quBytes, qoBytes] = mempoolLive.bytes == null
       ? [base.quBytes, base.qoBytes]
       : project(mempoolLive.bytes, base.quBytes, base.qoBytes);
+    // The live trace exposes only the aggregate between blocks. Keep the
+    // inferred split inside each lane's exact admission capacity; otherwise a
+    // transient mix estimate can claim 100.x% even though admission is capped.
+    const quCap = last.pool?.quCap, qoCap = last.pool?.qoCap;
+    if (quCap != null && qoCap != null){
+      if (quBytes > quCap){
+        qoBytes = Math.min(qoCap, qoBytes + quBytes - quCap);
+        quBytes = quCap;
+      }
+      if (qoBytes > qoCap){
+        quBytes = Math.min(quCap, quBytes + qoBytes - qoCap);
+        qoBytes = qoCap;
+      }
+    }
     const unchanged = qu === base.qu && qo === base.qo
       && quBytes === base.quBytes && qoBytes === base.qoBytes;
     return unchanged ? base : {qu, qo, quBytes, qoBytes, est: true};
@@ -2244,10 +2268,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   }
 
   // ---- lane health: surface a stalled demo feeder honestly --------------------
-  // A lane that was active but sits at rb=0 AND queue=0 for several blocks *while
-  // senders still choose it* means the demo feeder's dependent tx chain broke
-  // (the climbing quote outran its flat bid cap → AllInputsAreSpent). That's a
-  // load-generator limitation, not the pricing mechanism — say so on the page.
+  // A lane that was active but sits at rb=0 AND queue=0 for several blocks while
+  // fresh actor decisions still choose it means the demo feeder stopped
+  // submitting. That's a load-generator limitation, not the pricing mechanism.
   let alertDismissed = "";
   function laneHealth(){
     const el = document.getElementById("lane-alert");
@@ -2259,8 +2282,13 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       // Fire only when many senders still WANT the lane (>=25% of decisions) yet
       // nothing lands — that's a feeder failure, not demand correctly drying up at
       // a high price (which the price chart already explains on its own).
+      // Actor bucket indices count decision windows, not blocks. Compare their
+      // wall-clock timestamp instead; comparing the two index spaces made a
+      // stale high-load bucket look current after switching to Ghost town.
+      const actorWindowIsCurrent = aLast && aLast.t &&
+        Date.now()/1000 - aLast.t < 40;
       const stalled = (laneKey, qKey, demand) =>
-        total > 0 && demand >= 0.25 * total &&
+        actorWindowIsCurrent && total > 0 && demand >= 0.25 * total &&
         recent.every(b => (b[laneKey]||0) === 0 && (b[qKey]||0) === 0) &&
         all.some(b => (b[laneKey]||0) > 0 || (b[qKey]||0) > 0);
       const uStall = stalled("rb", "qu", aLast ? aLast.urgent : 0);
@@ -2272,7 +2300,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
                   : "The standard lane has";
         msg = `<strong>Demo note —</strong> ${who} stopped receiving new transactions, even though senders still want `+
           `${both ? "them" : "it"} (compare the 🧾 crowd journal). The demo's load generator stopped submitting — `+
-          `its dependent tx chain broke (<code>AllInputsAreSpent</code>) or it ran low on devnet funds. `+
+          `its fee ceiling may have fallen below the live quote, or its dependent chains may be waiting to re-anchor. `+
           `<strong>This is a limit of the demo's load generator, not the pricing mechanism</strong> — the real fix `+
           `(independent-tx funding) is future work; a restart refreshes it.`;
       }
@@ -2419,13 +2447,12 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   }
 
   // ---- live clocks: a felt sense of time --------------------------------------
-  // Session timer is exact (wall-clock since the page opened). Network age is an
-  // estimate = latest block index × the inter-block interval measured live (no
-  // genesis timestamp is in the stream), so it is shown with a "~".
+  // Session timer is exact (wall-clock since the page opened). The devnet uses
+  // one-second slots, so the latest slot is also its age since system start.
   const pageOpenedAt = Date.now();
-  // Genesis cadence: slotLength 1s ÷ activeSlotsCoeff 0.05 = 20 s/block expected.
-  // Using that fixed rate is far more stable than a noisy short-window measurement.
-  const SEC_PER_BLOCK = 20;
+  // Fallback for old/static streams without slots: slotLength 1s divided by
+  // activeSlotsCoeff 0.2 gives an expected five seconds per block.
+  const SEC_PER_BLOCK = 5;
   function recordBlockTiming(){ /* cadence is fixed from genesis — nothing to measure */ }
   function fmtDur(s){
     s = Math.max(0, Math.round(s));
@@ -2440,8 +2467,9 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     const session = fmtDur((Date.now() - pageOpenedAt)/1000);
     if (mode === "static"){ el.textContent = "⏱ captured run · " + (all.length ? all.length+" blocks" : ""); return; }
     if (!all.length){ el.textContent = "⏱ connecting…"; return; }
-    const i = all[all.length-1].i;
-    el.innerHTML = `⏱ network running for <strong>~${fmtDur(i*SEC_PER_BLOCK)}</strong> · block <strong>#${i}</strong> · you've watched ${session}`;
+    const latest = all[all.length-1], i = latest.i;
+    const ageSeconds = Number.isFinite(latest.slot) ? latest.slot : i * SEC_PER_BLOCK;
+    el.innerHTML = `⏱ network running for <strong>~${fmtDur(ageSeconds)}</strong> · block <strong>#${i}</strong> · you've watched ${session}`;
   }
 
   // ---- status + live polling ------------------------------------------------
@@ -2478,6 +2506,35 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     }
   }
 
+  async function pollFeederStatus(){
+    const el = document.getElementById("feeder-alert");
+    try {
+      const res = await fetch("feeder-status.json", {cache:"no-store"});
+      if (!res.ok) throw new Error("no feeder status");
+      const status = await res.json();
+      if (status.ready || mode === "static"){
+        el.classList.remove("show");
+        return;
+      }
+      const laneText = lane => {
+        const state = status[lane] || {};
+        const name = lane === "urgent" ? "urgent" : "standard";
+        if (state.stage === "ready") return `${name} lane ready`;
+        if (state.stage === "confirming")
+          return `${name} lane confirming ${Number(state.heads || 0).toLocaleString()} transaction heads`;
+        if (state.stage === "retrying") return `${name} lane retrying its funding split`;
+        return `${name} lane preparing its funding`;
+      };
+      document.getElementById("feeder-alert-body").innerHTML =
+        `<strong>Load generator preparing.</strong> The three-node network is already live; `+
+        `${laneText("optimistic")}, ${laneText("urgent")}. Cockpit commands are saved and `+
+        `start automatically when both lanes are ready.`;
+      el.classList.add("show");
+    } catch (e) {
+      el.classList.remove("show");
+    }
+  }
+
   // ---- REAL evictions from the node (evictions.ndjson, written by the tailer) -
   let evLiveData = [];
   async function pollEvictions(){
@@ -2487,15 +2544,16 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       if (!res.ok) throw new Error("no evictions stream");
       const text = (await res.text()).trim();
       const parsed = text ? text.split("\n").filter(Boolean).map(l=>JSON.parse(l)) : [];
-      // Stamp each record with its CLIENT arrival time: the stream mixes two
-      // writers whose own timestamps disagree (node traces run on the devnet's
-      // backdated clock), so command windows must be matched on arrival, not
-      // on the record's claimed time. Records already present at page load get
-      // no stamp and never attach to this session's commands.
+      // Prefer the producer timestamp so a refresh can reconstruct the pressure
+      // journal from the durable stream. Fall back to client arrival only for a
+      // legacy record without a parseable timestamp.
       const now = Date.now();
-      for (let k = 0; k < parsed.length; k++)
-        parsed[k]._rx = (k < evLiveData.length) ? evLiveData[k]._rx : (evLiveData.length ? now : 0);
-      if (parsed.length < evLiveData.length) parsed.forEach(e => { e._rx = 0; });  // stream truncated (new run): rebaseline
+      for (let k = 0; k < parsed.length; k++){
+        const producerTime = Date.parse(parsed[k].t);
+        parsed[k]._rx = Number.isFinite(producerTime)
+          ? producerTime
+          : (k < evLiveData.length ? evLiveData[k]._rx : now);
+      }
       evLiveData = parsed;
     } catch (e) { /* no stream (standalone) → leave evLiveData as is */ }
     renderJournals();  // the ⚡ journal shows the drops each scenario causes
@@ -2512,7 +2570,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // run-config.json (written by the runner) tells the page what is actually running.
   const EVGEN_EXPLAIN = {
     off:   "Nothing forced right now — only the regular crowd of senders.",
-    type1: "Floods the lane currently setting max-fee validity with independent transactions funded one controller step ahead. Sustained fill moves that quote again, so the remaining backlog is repriced out with BidBelowQuote.",
+    type1: "Floods the lane currently setting max-fee validity with independently funded transactions carrying finite max fees. Sustained fill moves that quote until the remaining backlog is repriced out with BidBelowQuote.",
     type2: "Sends pairs of txs fighting over one coin — first-come keeps it, the late urgent tx is turned away at the door.",
     type3: "Silences the certification committee — everything riding the endorser blocks, patient txs and urgent riders alike, freezes until you flip back to Quiet."
   };
@@ -2520,7 +2578,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // Same shape as the crowd scenarios: one chip = one situation, spec upfront.
   const EVGEN_SCENARIOS = [
     { mode:"off",   name:"Quiet",              spec:"no forced trouble" },
-    { mode:"type1", name:"Price squeeze",      spec:"dominant-lane burst · one-step fee headroom" },
+    { mode:"type1", name:"Price squeeze",      spec:"dominant-lane burst · finite max fees" },
     { mode:"type2", name:"Coin clash",         spec:"pairs of txs · one coin" },
     { mode:"type3", name:"Certification miss", spec:"committee silenced" },
   ];
@@ -2582,6 +2640,15 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       // Reconcile the projection with the pending command — pure state, no
       // timers to race the runner's convergence.
       if (cfg.generator){
+        if (cfg.generator === "type1" && cfg.t1Bid){
+          const squeezeRow = pressureJournal.find(r => r.mode === "type1" && !r.t1Bid);
+          if (squeezeRow){
+            squeezeRow.t1Bid = cfg.t1Bid;
+            squeezeRow.t1TxBytes = cfg.t1TxBytes;
+            squeezeRow.t1Lane = cfg.t1Lane;
+            savePressureJournal();
+          }
+        }
         if (evgenRequested !== null && cfg.generator === evgenRequested){
           evgenRequested = null;                      // our command converged
         } else if (lastRunnerGen !== null && cfg.generator !== lastRunnerGen &&
@@ -2692,16 +2759,26 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // refresh does not lose the scenario history.
   try {
     for (const r of JSON.parse(localStorage.getItem("pressureJournal") || "[]"))
-      pressureJournal.push({desc: r.d, mode: r.m, at: new Date(r.a)});
+      pressureJournal.push({
+        desc: r.d, mode: r.m, at: new Date(r.a),
+        t1Bid: r.b, t1TxBytes: r.z, t1Lane: r.l
+      });
   } catch (e) { /* fresh browser */ }
   function savePressureJournal(){
     try {
       localStorage.setItem("pressureJournal",
-        JSON.stringify(pressureJournal.map(r => ({d: r.desc, m: r.mode, a: r.at.getTime()}))));
+        JSON.stringify(pressureJournal.map(r => ({
+          d: r.desc, m: r.mode, a: r.at.getTime(),
+          b: r.t1Bid, z: r.t1TxBytes, l: r.t1Lane
+        }))));
     } catch (e) { /* private mode */ }
   }
   function pressureNote(desc, mode){
-    pressureJournal.unshift({desc, mode, at: new Date()});
+    const spec = mode === "type1" && runCfg && runCfg.t1Bid ? runCfg : {};
+    pressureJournal.unshift({
+      desc, mode, at: new Date(),
+      t1Bid: spec.t1Bid, t1TxBytes: spec.t1TxBytes, t1Lane: spec.t1Lane
+    });
     if (pressureJournal.length > 12) pressureJournal.pop();
     savePressureJournal();
     renderPressureJournal();
@@ -2752,18 +2829,19 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // The squeeze burst's arithmetic, from the runner's published spec: what each
   // burst tx bids, the per-byte threshold that implies, and where the live
   // controlling quote stands against it.
-  function squeezeMath(){
-    if (!runCfg || !runCfg.t1Bid) return "";
+  function squeezeMath(row){
+    const spec = row && row.t1Bid ? row : runCfg;
+    if (!spec || !spec.t1Bid) return "";
     // The ledger's quote = fixed fee + rate x size (minFeeB = 155,381 on this
     // devnet), so the crossing rate must net the fixed part out of the bid.
     const MIN_FEE_LOVELACE = 155381;
-    const thr = Math.round((runCfg.t1Bid - MIN_FEE_LOVELACE) / runCfg.t1TxBytes);
-    const lane = runCfg.t1Lane === "optimistic" ? "standard" : "urgent";
+    const thr = Math.round((spec.t1Bid - MIN_FEE_LOVELACE) / spec.t1TxBytes);
+    const lane = spec.t1Lane === "optimistic" ? "standard" : "urgent";
     const quote = (typeof all !== "undefined" && all.length)
-      ? all[all.length - 1][runCfg.t1Lane === "optimistic" ? "optimistic" : "urgent"]
+      ? all[all.length - 1][spec.t1Lane === "optimistic" ? "optimistic" : "urgent"]
       : null;
-    const bidAda = (runCfg.t1Bid / 1e6).toFixed(1);
-    const kb = (runCfg.t1TxBytes / 1000).toFixed(1);
+    const bidAda = (spec.t1Bid / 1e6).toFixed(1);
+    const kb = (spec.t1TxBytes / 1000).toFixed(1);
     return `each burst tx caps at ₳${bidAda} for ${kb} KB ≈ ${thr.toLocaleString()} lovelace/byte — ` +
       (quote === null ? `they drop once the ${lane} quote passes that.`
         : quote > thr ? `the ${lane} quote (${quote.toLocaleString()}) is past it: drops are firing.`
@@ -2882,7 +2960,7 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       if (r.mode === "type1"){
         const n = pressureDropCount(r);
         effect = n ? `<b style="color:var(--live)">${n.toLocaleString()} of its txs priced out</b>`
-                   : `<span class="hint" style="margin:0">${squeezeMath() || "none priced out yet (the price must first climb past its max fees — a few blocks)"}</span>`;
+                   : `<span class="hint" style="margin:0">${squeezeMath(r) || "none priced out yet (the price must first climb past its max fees — a few blocks)"}</span>`;
       } else if (r.mode === "type2"){
         const n = pressureDropCount(r);
         effect = n ? `<b style="color:var(--live)">${n.toLocaleString()} of its txs turned away</b>`
@@ -3134,17 +3212,19 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       The pressure runs <strong>on top of the crowd</strong>, with its own senders and its own funds — the crowd kept
       flowing the whole time (its scenarios and txs are in the 👥 journal).</p>`;
     if (row.mode === "type1"){
-      const m = squeezeMath();
+      const m = squeezeMath(row);
       html += `<p class="hint" style="margin:0 0 8px">${m ? "<strong>The numbers:</strong> " + m + " " : ""}` +
         `<strong>Why blocks can look small meanwhile:</strong> each burst tx is fat (~${runCfg && runCfg.t1TxBytes ? (runCfg.t1TxBytes/1000).toFixed(1) : "10.3"} KB — ×30+ a normal payment),
         so a small count consumes a large share of its delivery block's byte budget. The charts count txs, so a byte-full block draws a
         short bar — and the queue climbs because the burst pours in more bytes than one block can drain.</p>`;
     }
     if (row.mode === "type1" || row.mode === "type2"){
-      const events = pressureDropEvents(row).slice(-40).reverse();
+      // Group the complete window; limiting the raw per-tx stream before
+      // grouping made the summary disagree with the total above it.
+      const events = pressureDropEvents(row).reverse();
       const total = pressureDropCount(row);
       const what = row.mode === "type1"
-        ? "its txs dropped on price — evicted while waiting when the climbing quote outran their max fees, or refused at the door once it already had"
+        ? "its txs dropped on price — evicted while waiting when the climbing quote outran their max fees, or refused at the door once the quote had already crossed them"
         : "its txs turned away at the door — the coin they spend is already held by an admitted tx (first-come)";
       html += `<div style="border-top:1px solid var(--border); padding-top:8px">` +
         `<strong style="color:var(--live)">${total.toLocaleString()} of the scenario's own txs ${row.mode === "type1" ? "priced out" : "turned away"}</strong>` +
@@ -3357,11 +3437,16 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
   // Can this origin DRIVE the demo, or only read it? Stray file servers keep
   // serving the page (GETs all work) but silently swallow every command —
   // probe once and say it loudly instead of failing quietly on first click.
-  (async function probeWriteAccess(){
+  async function probeWriteAccess(attempt = 0){
     try {
       const r = await fetch("/actor-config", {method:"POST",
         headers:{"Content-Type":"application/json"}, body:"{}"});   // merge of nothing: harmless
-      if (r.ok) return;
+      if (r.ok){
+        document.body.classList.remove("viewer");
+        guardChip("viewer-chip", null, "var(--waiting)");
+        guardChip("ro-chip", null, "var(--muted)");
+        return;
+      }
       let marker = null;
       try { marker = await r.json(); } catch (e2) {}
       if (marker && marker.readOnly){
@@ -3385,8 +3470,16 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
           ? "📖 read-only copy — this address can't drive the demo. Open <a href='http://localhost:8780' style='color:#fff;text-decoration:underline'>localhost:8780</a>"
           : "📸 captured run — a frozen snapshot of a real devnet run; the cockpit drives nothing here",
         "var(--muted)");
+      // A presenter tab can outlive a full network restart. Retry only on the
+      // canonical local control port so the stale read-only warning clears as
+      // soon as the command server returns.
+      if (local && location.port === "8780"){
+        const delay = Math.min(1000 * (2 ** Math.min(attempt, 3)), 10000);
+        setTimeout(() => probeWriteAccess(attempt + 1), delay);
+      }
     }
-  })();
+  }
+  probeWriteAccess();
   let pageStamp = null;
   async function checkPageVersion(){
     try {
@@ -3663,10 +3756,10 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
       watch:"Traffic is force-fed 50/50 at a sustained rate with ceiling bids and 6 KB payloads. Watch full ranking blocks, full eligible endorser blocks, both queue projections, and each quote's separate signal. Because bids remain valid, any pause now comes from chain or pool backpressure rather than <code>BidBelowQuote</code>." },
     { name:"High tide", spec:"~100 tx/s · 50/50 (forced) · fat 12 KB txs · ceiling bids",
       config:{...ACTOR_PRESETS["Balanced"], feeBuffer:0}, delayMs:10, laneMix:0.5, metadataBytes:12000,
-      watch:"The highest sustained mixed load: 12 KB transactions bidding the <strong>fee ceiling</strong>, so climbing quotes cannot evict them. In the live cards, inspect pool bytes and diffusion time; in History, verify that ranking blocks and eligible endorser blocks repeatedly hit 100%. To demonstrate a pool reaching its admission limit, combine a one-lane storm with <strong>Certification miss</strong>, then return to Quiet and watch it drain." },
+      watch:"The highest sustained mixed load: 12 KB transactions bidding the demo's <strong>high fee ceiling</strong>, so quote movement stays visible without early self-eviction during a normal scenario run. In the live cards, inspect pool bytes and diffusion time; in History, verify that ranking blocks and eligible endorser blocks repeatedly hit 100%. To demonstrate a pool reaching its admission limit, combine a one-lane storm with <strong>Certification miss</strong>, then return to Quiet and watch it drain." },
     { name:"Ghost town", spec:"nobody sends · a stray tx every ~15 s",
       config:{...ACTOR_PRESETS["Balanced"]}, delayMs:15000, laneMix:null,
-      watch:"Demand stops. Watch both quotes ease back toward the floor (−6.25% a block), the queues drain, and blocks run near-empty — the mechanism at rest." },
+      watch:"Demand stops. The queues drain and blocks run near-empty. Each quote then eases toward the floor as earlier full-block samples leave its rolling window (5 fast / 20 standard); after a saturation run, the standard quote can keep rising briefly before it turns." },
   ];
   function markScenario(name){
     [...document.querySelectorAll("#scenarios .scenario")].forEach(el => el.classList.toggle("active", el.dataset.name===name));
@@ -3724,8 +3817,8 @@ details.subsec > *:not(summary):last-child{margin-bottom:12px}
     }
   })();
 
-  poll(); pollActors(); pollEvictions(); pollMempoolLive(); pollIncentives();
-  setInterval(()=>{ poll(); pollActors(); pollEvictions(); pollIncentives(); }, 1200);
+  poll(); pollActors(); pollFeederStatus(); pollEvictions(); pollMempoolLive(); pollIncentives();
+  setInterval(()=>{ poll(); pollActors(); pollFeederStatus(); pollEvictions(); pollIncentives(); }, 1200);
   setInterval(pollMempoolLive, 250);   // 4 Hz: the Live section breathes faster than the block poll
   tickClock(); setInterval(tickClock, 1000);
   </script>
