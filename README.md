@@ -121,16 +121,17 @@ dashboard. The equivalent manual steps are:
 # 1. Build the node and the lane feeder (one cabal project; first build is long)
 cd cardano-node
 DEV_SHELL="path:$(git rev-parse --show-superproject-working-tree)?dir=cardano-node"
-nix develop "$DEV_SHELL" --command cabal build exe:cardano-node exe:dijkstra-lane-feeder
+nix develop "$DEV_SHELL" --command cabal build exe:cardano-node exe:cardano-cli exe:dijkstra-lane-feeder
 
 # 2. Point the run script at the binaries and the dashboard, then launch
 NODE_BIN_DIR=$(dirname $(nix develop "$DEV_SHELL" --command cabal list-bin exe:cardano-node))
+CLI_BIN_DIR=$(dirname $(nix develop "$DEV_SHELL" --command cabal list-bin exe:cardano-cli))
 FEEDER_BIN=$(nix develop "$DEV_SHELL" --command cabal list-bin exe:dijkstra-lane-feeder)
 cd ../ouroboros-leios/demo/proto-devnet
-PATH="$NODE_BIN_DIR:$PATH" \
+PATH="$NODE_BIN_DIR:$CLI_BIN_DIR:$PATH" \
 LANE_FEEDER="$FEEDER_BIN" \
 DEMO_DIR="$(git rev-parse --show-toplevel)/../demo" \
-bash run-dijkstra-live-demo.sh
+nix shell nixpkgs#process-compose nixpkgs#yq-go --command bash run-dijkstra-live-demo.sh
 ```
 
 The script boots a **real 3-node Dijkstra devnet**, the crowd feeder, the

@@ -51,16 +51,19 @@ rm -rf "$WORKING_DIR"
 
 cd cardano-node
 DEV_SHELL="path:$ROOT?dir=cardano-node"
-nix develop "$DEV_SHELL" --command cabal build exe:cardano-node exe:dijkstra-lane-feeder
+nix develop "$DEV_SHELL" --command cabal build exe:cardano-node exe:cardano-cli exe:dijkstra-lane-feeder
 NODE_BIN_DIR=$(dirname "$(nix develop "$DEV_SHELL" --command cabal list-bin exe:cardano-node)")
+CLI_BIN_DIR=$(dirname "$(nix develop "$DEV_SHELL" --command cabal list-bin exe:cardano-cli)")
 FEEDER_BIN=$(nix develop "$DEV_SHELL" --command cabal list-bin exe:dijkstra-lane-feeder)
 
 cd "$ROOT/ouroboros-leios/demo/proto-devnet"
 release_restart_lock
 trap - EXIT
-PATH="$NODE_BIN_DIR:$PATH" \
-LANE_FEEDER="$FEEDER_BIN" \
-DEMO_DIR="$ROOT/demo" \
-DEMO_LAUNCHER="$ROOT/launch-demo.sh" \
-WORKING_DIR="$WORKING_DIR" \
-exec bash run-dijkstra-live-demo.sh
+exec nix shell nixpkgs#process-compose nixpkgs#yq-go --command env \
+  DEMO_NODE_BIN_DIR="$NODE_BIN_DIR" \
+  DEMO_CLI_BIN_DIR="$CLI_BIN_DIR" \
+  LANE_FEEDER="$FEEDER_BIN" \
+  DEMO_DIR="$ROOT/demo" \
+  DEMO_LAUNCHER="$ROOT/launch-demo.sh" \
+  WORKING_DIR="$WORKING_DIR" \
+  bash -c 'export PATH="$DEMO_NODE_BIN_DIR:$DEMO_CLI_BIN_DIR:$PATH"; exec bash run-dijkstra-live-demo.sh'
